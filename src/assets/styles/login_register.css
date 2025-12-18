@@ -1,0 +1,267 @@
+body {
+    background: #d6d6d6;
+    font-family: 'Nunito', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.login-page, .register-page {
+    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.background-overlay img {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%;
+    height: 100vh;
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.login-container,
+.register-container {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+    padding: 32px 20px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.main-title {
+    color: #4f46e5;
+    font-size: 2.5em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-size: 1em;
+    margin-bottom: 7px;
+    margin-top: 7px;
+    font-weight: 600;
+}
+
+.role-label {
+    margin-top: 20px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="date"],
+textarea {
+    width: 90%;
+    padding: 13px 15px;
+    margin-bottom: 10px;
+    border: 1.5px solid #222;
+    border-radius: 8px;
+    font-size: 1em;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: 'Nunito', Arial, sans-serif;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="date"]:focus,
+textarea:focus {
+    border-color: #4f46e5;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.role-selector {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.role-btn {
+    background: #d6d6d6;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 28px;
+    font-size: 1em;
+    font-weight: 600;
+    color: #222;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.role-btn.selected {
+    background: #4f46e5;
+    color: #fff;
+}
+
+.sign-in-btn {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 15px 0;
+    font-size: 1.2em;
+    font-weight: 700;
+    width: 100%;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.sign-in-btn:hover {
+    background: #38b6ff;
+}
+
+.create-account-btn {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 15px 0;
+    font-size: 1.2em;
+    font-weight: 700;
+    width: 100%;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.create-account-btn:hover {
+    background: #38b6ff;
+}
+
+/* ==================== OAUTH STYLES ==================== */
+.oauth-divider {
+    width: 100%;
+    text-align: center;
+    margin: 20px 0 16px;
+    position: relative;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 42%;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+.oauth-divider::before {
+    left: 0;
+}
+
+.oauth-divider::after {
+    right: 0;
+}
+
+.oauth-divider span {
+    background: #fff;
+    padding: 0 12px;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.oauth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.btn-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-social:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.btn-google {
+    border-color: #4285F4;
+}
+
+.btn-google:hover {
+    background: #f1f7ff;
+    border-color: #3b78e7;
+}
+
+.btn-facebook {
+    border-color: #1877F2;
+}
+
+.btn-facebook:hover {
+    background: #f0f5ff;
+    border-color: #166fe5;
+}
+
+.oauth-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.bottom-text {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.link {
+    color: #4f46e5;
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.link:hover {
+    text-decoration: underline;
+}

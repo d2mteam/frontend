@@ -1,0 +1,261 @@
+body {
+    margin: 0;
+    font-family: 'Nunito', Arial, sans-serif;
+    background: #f4f5fa;
+}
+
+.EventsVolunteer-container, .EventApproval-container {
+    display: flex;
+    min-height: 100vh;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+.events-container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    flex-direction: column;
+}
+
+.main-content {
+  margin-left: 280px;
+  width: calc(100vw - 280px);
+  max-width: calc(100vw - 280px);
+  height: 100vh;
+  padding: 24px 32px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.events-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.tabs-row {
+  margin-top: 12px;
+}
+
+#events-area {
+  margin-top: 16px;
+}
+
+.loading {
+  text-align: center;
+  color: #666;
+  font-size: 1.1em;
+}
+
+.events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.events-header h2 {
+    font-size: 1.3em;
+    font-weight: 700;
+    margin: 0;
+}
+
+.add-event-btn {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.2s;
+}
+
+.add-event-btn:hover {
+    background: #38b6ff;
+}
+
+/* Tabs */
+.events-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.event-tab {
+    background: #e5e7eb;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 22px;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.2s, color 0.2s;
+}
+
+.event-tab.active,
+.event-tab:hover {
+    background: #4f46e5;
+    color: #fff;
+}
+
+/* Event card list */
+.event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+/* Event card */
+.event-card.event-vol, .event-card.event-admin {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(56,182,255,0.07);
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    position: relative;
+}
+
+.event-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.event-title {
+    font-family: Arial;
+    font-size: 1.2em;
+    font-weight: 800;
+    color: #4f46e5;
+    text-decoration: none;
+}
+
+.event-title:hover {
+    text-decoration: underline;
+}
+
+.event-date {
+    color: #444;
+    font-size: 1em;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.event-location {
+    color: #666;
+    font-size: 1em;
+}
+
+.event-desc, .event-notification {
+    color: #222;
+    font-size: 1em;
+    margin-bottom: 4px;
+}
+
+.event-tags {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.event-status {
+    background: #4f46e5;
+    color: #fff;
+    border-radius: 6px;
+    padding: 3px 12px;
+    font-size: 0.95em;
+    font-weight: 600;
+}
+
+.event-status.upcoming {
+    background: #4f46e5;
+}
+
+.event-status.ongoing {
+    background: #fbbf24;
+}
+
+.event-status.completed {
+    background: #22c55e;
+}
+
+.event-max {
+    background: #e5e7eb;
+    color: #444;
+    border-radius: 6px;
+    padding: 3px 12px;
+    font-size: 0.95em;
+    font-weight: 600;
+}
+
+.event-time {
+    position: absolute;
+    right: 22px;
+    bottom: 18px;
+    color: #666;
+    font-size: 0.98em;
+}
+
+.event-actions{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.event-join-btn, .event-cancel-btn, .event-edit-btn, .event-delete-btn, .event-approve-btn, .event-view-btn {
+    display: flex;
+    gap: 8px;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.event-join-btn, .event-edit-btn, .event-approve-btn, .event-view-btn {
+    background: linear-gradient(90deg, #4f46e5 0%, #6d28d9 100%);
+}
+
+.event-cancel-btn, .event-delete-btn {
+    background: linear-gradient(90deg, #e84951 0%, #d92828 100%);
+}
+
+.event-cancel-btn:hover, .event-edit-btn:hover, .event-join-btn:hover, .event-delete-btn:hover, .event-approve-btn:hover, .event-view-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.98;
+}
+

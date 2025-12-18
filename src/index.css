@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+
+:root {
+  color-scheme: light;
+  color: #333333;
+  background-color: #FFFFFF;
+  
+  /* ========== Journey Theme Colors ========== */
+  /* 1. Hero Section - Bình Minh Khám Phá */
+  --hero-sky-blue: #E0F2FE;
+  --hero-sky-blue-light: #F0F9FF;
+  --hero-gradient: linear-gradient(180deg, #E0F2FE 0%, #FFFFFF 100%);
+  
+  /* 2. About Section - Vùng Đất Ấm Áp */
+  --about-cream: #FFFBEB;
+  --about-beige: #FEF3C7;
+  
+  /* 3. Services/Events - Khu Rừng Năng Lượng */
+  --action-lime: #65A30D;
+  --action-lime-light: #84CC16;
+  --action-lime-bg: #F7FEE7;
+  
+  /* 4. Impact Stats - Đại Dương Xanh */
+  --impact-blue: #2563EB;
+  --impact-indigo: #4F46E5;
+  
+  /* 5. Testimonials - Ánh Cam Nhiệt Huyết */
+  --testimonial-orange: #EA580C;
+  --testimonial-orange-light: #F97316;
+  
+  /* 6. Footer - Màn Đêm Tĩnh Lặng */
+  --footer-charcoal: #1E293B;
+  --footer-text: #CBD5E1;
+  
+  /* Text Colors */
+  --text-dark: #1E293B;
+  --text-medium: #475569;
+  --text-light: #64748B;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+a {
+  font-weight: 500;
+  color: #1E3A8A;
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: #3B82F6;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1E3A8A;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #1e2d6f;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  animation: slideIn 0.3s ease-out;
+  max-width: 400px;
+  font-weight: 500;
+}
+
+.notification-success {
+  background-color: #22c55e;
+  color: white;
+}
+
+.notification-error {
+  background-color: #ef4444;
+  color: white;
+}
+
+.notification-info {
+  background-color: #3b82f6;
+  color: white;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
