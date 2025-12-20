@@ -51,9 +51,16 @@ axiosClient.interceptors.response.use(
       }
     }
 
-    // Handle other errors
-    const errorMessage = error.response?.data?.message || error.message || 'Network error';
-    return Promise.reject(new Error(errorMessage));
+    // Handle other errors: surface backend message/reason/status
+    const data = error.response?.data || {};
+    const reason = data.reasonCode;
+    const status = error.response?.status;
+    const msg = data.message || data.error || error.message || 'Network error';
+    const combined = [reason ? `[${reason}]` : '', msg, status ? `(HTTP ${status})` : ''].filter(Boolean).join(' ');
+    const err = new Error(combined);
+    err.response = error.response;
+    err.data = data;
+    return Promise.reject(err);
   }
 );
 

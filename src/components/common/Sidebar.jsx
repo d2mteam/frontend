@@ -8,7 +8,6 @@ function Sidebar() {
   const location = useLocation();
   const { user } = useAuth();
   
-  // Map uppercase roles from backend to lowercase for menu selection
   const getRoleKey = (userRole) => {
     if (!userRole) return 'volunteer';
     const roleUpper = userRole.toUpperCase();
@@ -26,6 +25,7 @@ function Sidebar() {
         items: [
           { key: 'dashboard', label: 'Dashboard', icon: '🏠', to: '/dashboard' },
           { key: 'events', label: 'Sự kiện', icon: '📅', to: '/events' },
+          { key: 'history', label: 'Lịch sử tham gia', icon: '🕒', to: '/history' },
         ]
       },
       {
@@ -40,7 +40,7 @@ function Sidebar() {
         title: 'TRANG CHÍNH',
         items: [
           { key: 'dashboard', label: 'Dashboard', icon: '🏠', to: '/dashboard' },
-          { key: 'events-manage', label: 'Quản lý sự kiện', icon: '🛠️', to: '/manager/events' },
+          { key: 'events-manage', label: 'Quản lý sự kiện', icon: '🛠️', to: '/event-manager/events' },
         ]
       },
       {
@@ -84,7 +84,6 @@ function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* Logo Section */}
       <div className="sidebar-header" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <div className="logo-container">
           <div className="logo-icon">
@@ -93,13 +92,12 @@ function Sidebar() {
             </svg>
           </div>
           <div className="logo-text">
-            <div className="logo-main">Arise Hearts</div>
-            <div className="logo-sub">Volunteer Club</div>
+            <div className="logo-main">Volunteer Hub</div>
+            <div className="logo-sub">Nền tảng tình nguyện</div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Menu */}
       <nav className="sidebar-nav">
         {groups.map((group, idx) => (
           <div key={idx} className="nav-group">

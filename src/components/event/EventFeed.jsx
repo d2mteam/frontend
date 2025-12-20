@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../common/Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { createPost, toggleLike, addComment, deletePost, deleteComment } from '../../services/postService';
+import { createPost, toggleLike, addComment, deletePost, deleteComment, editComment } from '../../services/postService';
 import { getEventById } from '../../services/eventService';
 import { getPostComments } from '../../services/eventPostsService';
 import '../../assets/styles/unified-dashboard.css';
@@ -23,7 +23,14 @@ export default function EventFeed() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPost, setNewPost] = useState({ title: '', body: '', image: null });
   const [commentInputs, setCommentInputs] = useState({});
+  const [commentMenus, setCommentMenus] = useState({});
+  const [editingCommentInputs, setEditingCommentInputs] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  const handleOpenProfile = (userId) => {
+    if (!userId) return;
+    navigate(`/users/${userId}`);
+  };
 
   useEffect(() => {
     if (eventId) {
@@ -42,7 +49,12 @@ export default function EventFeed() {
           title: eventData.eventName || 'Sự kiện',
           description: eventData.eventDescription || '',
           location: eventData.eventLocation || 'Chưa xác định',
-          startAt: eventData.createdAt
+          startAt: eventData.createdAt,
+          memberCount: eventData.memberCount || 0,
+          postCount: eventData.postCount || 0,
+          categories: eventData.categories || [],
+          likeCount: eventData.likeCount || 0,
+          isLiked: false
         });
 
         const postsContent = eventData.listPost?.content || [];
@@ -64,7 +76,9 @@ export default function EventFeed() {
             content: c.content,
             author: c.createBy?.fullName || c.createBy?.username || 'Anonymous',
             authorId: c.createBy?.userId,
-            createdAt: c.createdAt ? new Date(c.createdAt).toLocaleString('vi-VN') : ''
+            createdAt: c.createdAt ? new Date(c.createdAt).toLocaleString('vi-VN') : '',
+            likeCount: c.likeCount || 0,
+            isLiked: false
           }))
         }));
         setPosts(mapped);
@@ -194,6 +208,23 @@ export default function EventFeed() {
     }
   };
 
+  const handleLikeEvent = async () => {
+    if (!event) return;
+    const nextLiked = !event.isLiked;
+    const nextCount = Math.max(0, (event.likeCount || 0) + (nextLiked ? 1 : -1));
+    setEvent(prev => ({ ...prev, isLiked: nextLiked, likeCount: nextCount }));
+    try {
+      const res = await toggleLike(event.id, 'EVENT');
+      if (!res.success) {
+        setEvent(prev => ({ ...prev, isLiked: !nextLiked, likeCount: event.likeCount }));
+        showNotification('Không thể thích sự kiện', 'error');
+      }
+    } catch (error) {
+      setEvent(prev => ({ ...prev, isLiked: !nextLiked, likeCount: event.likeCount }));
+      showNotification('Không thể thích sự kiện', 'error');
+    }
+  };
+
   const handleComment = async (postId) => {
     const content = commentInputs[postId];
     if (!content?.trim()) {
@@ -209,7 +240,9 @@ export default function EventFeed() {
           content,
           author: user?.username || user?.email || 'Bạn',
           authorId: user?.userId,
-          createdAt: new Date().toLocaleString('vi-VN')
+          createdAt: new Date().toLocaleString('vi-VN'),
+          likeCount: 0,
+          isLiked: false
         };
 
         const info = commentPageInfo[postId];
@@ -262,7 +295,9 @@ export default function EventFeed() {
           content: c.content,
           author: c.creatorInfo?.fullName || c.creatorInfo?.username || 'Anonymous',
           authorId: c.creatorInfo?.userId,
-          createdAt: c.createdAt ? new Date(c.createdAt).toLocaleString('vi-VN') : ''
+          createdAt: c.createdAt ? new Date(c.createdAt).toLocaleString('vi-VN') : '',
+          likeCount: c.likeCount || 0,
+          isLiked: false
         }));
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments } : p));
         setCommentPageInfo(prev => ({ ...prev, [postId]: res.data.pageInfo }));
@@ -352,6 +387,117 @@ export default function EventFeed() {
     }
   };
 
+  const startEditComment = (postId, commentId, currentContent) => {
+    setEditingCommentInputs(prev => ({ ...prev, [commentId]: currentContent }));
+    setCommentMenus(prev => ({ ...prev, [`${postId}_${commentId}`]: false }));
+  };
+
+  const submitEditComment = async (postId, commentId) => {
+    const newContent = editingCommentInputs[commentId];
+    if (!newContent || !newContent.trim()) return;
+    try {
+      const res = await editComment(commentId, newContent.trim());
+      if (res.success) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments: p.comments.map(c => c.id === commentId ? { ...c, content: newContent.trim() } : c)
+            };
+          }
+          return p;
+        }));
+        showNotification('Đã cập nhật bình luận', 'success');
+        setEditingCommentInputs(prev => {
+          const next = { ...prev };
+          delete next[commentId];
+          return next;
+        });
+      } else {
+        showNotification(res.error || 'Không thể cập nhật bình luận', 'error');
+      }
+    } catch (error) {
+      showNotification('Không thể cập nhật bình luận', 'error');
+    }
+  };
+
+  const cancelEditComment = (commentId) => {
+    setEditingCommentInputs(prev => {
+      const next = { ...prev };
+      delete next[commentId];
+      return next;
+    });
+  };
+
+  const handleLikeComment = async (postId, commentId) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: p.comments.map(c => {
+            if (c.id === commentId) {
+              const nextLiked = !c.isLiked;
+              return {
+                ...c,
+                isLiked: nextLiked,
+                likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+              };
+            }
+            return c;
+          })
+        };
+      }
+      return p;
+    }));
+
+    try {
+      const res = await toggleLike(commentId, 'COMMENT');
+      if (!res.success) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments: p.comments.map(c => {
+                if (c.id === commentId) {
+                  const nextLiked = !c.isLiked;
+                  return {
+                    ...c,
+                    isLiked: nextLiked,
+                    likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                  };
+                }
+                return c;
+              })
+            };
+          }
+          return p;
+        }));
+        showNotification('Không thể thích bình luận', 'error');
+      }
+    } catch (error) {
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            comments: p.comments.map(c => {
+              if (c.id === commentId) {
+                const nextLiked = !c.isLiked;
+                return {
+                  ...c,
+                  isLiked: nextLiked,
+                  likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                };
+              }
+              return c;
+            })
+          };
+        }
+        return p;
+      }));
+      showNotification('Không thể thích bình luận', 'error');
+    }
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -367,55 +513,84 @@ export default function EventFeed() {
   const getBackRoute = () => {
     const roleUpper = user?.role?.toUpperCase();
     if (roleUpper === 'ADMIN') return '/admin/events';
-    if (roleUpper === 'EVENT_MANAGER') return '/manager/events';
+    if (roleUpper === 'EVENT_MANAGER') return '/event-manager/events';
     return '/events';
   };
 
   return (
     <div className="EventsVolunteer-container">
       <Sidebar />
-      <main className="main-content">
-        {/* Header */}
-        <div className="events-header" style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button 
-              onClick={() => navigate(getBackRoute())}
-              style={{ 
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: 'white',
-                border: 'none', 
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                padding: '10px 20px',
-                borderRadius: '10px',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
-              }}
-              title="Quay lại danh sách sự kiện"
-            >
-              <span>←</span>
-              <span>Quay lại</span>
-            </button>
-            <h2 style={{ display: 'inline', margin: 0 }}>Bảng tin sự kiện</h2>
+      <div className="events-container">
+        <main className="main-content">
+          {/* Header */}
+          <div className="events-header" style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button 
+                onClick={() => navigate(getBackRoute())}
+                style={{ 
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none', 
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
+                }}
+                title="Quay lại danh sách sự kiện"
+              >
+                <span>←</span>
+                <span>Quay lại</span>
+              </button>
+              <h2 style={{ display: 'inline', margin: 0 }}>Bảng tin sự kiện</h2>
+            </div>
           </div>
+
           {event && (
-            <div style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-              📅 {event.title} - {event.location}
+            <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f9fafb', borderRadius: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '15px', color: '#111827' }}>
+                  <div><strong>Tên sự kiện:</strong> {event.title}</div>
+                  <div><strong>ID:</strong> {event.id}</div>
+                  <div><strong>Mô tả:</strong> {event.description || 'Chưa có mô tả'}</div>
+                  <div><strong>Địa điểm:</strong> {event.location || 'Chưa xác định'}</div>
+                  <div><strong>Thời gian tạo:</strong> {event.startAt ? new Date(event.startAt).toLocaleString('vi-VN') : 'Chưa cập nhật'}</div>
+                </div>
+                <button
+                  onClick={handleLikeEvent}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 14px',
+                    borderRadius: 14,
+                    border: '1px solid #e5e7eb',
+                    background: event.isLiked ? '#e0ecff' : '#fff',
+                    color: event.isLiked ? '#2563eb' : '#374151',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    alignSelf: 'flex-end'
+                  }}
+                >
+                  <span style={{ fontSize: '18px' }}>👍</span>
+                  <span>{event.likeCount || 0} lượt thích</span>
+                </button>
+              </div>
             </div>
           )}
-        </div>
 
           {/* Create Post Button */}
           <div style={{ marginBottom: '24px' }}>
@@ -493,10 +668,18 @@ export default function EventFeed() {
                         {post.author.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '15px' }}>{post.author}</div>
-                        <div style={{ fontSize: '13px', color: '#6b7280' }}>{post.createdAt}</div>
-                      </div>
+                      <button
+                        onClick={() => handleOpenProfile(post.authorId)}
+                        style={{ 
+                          fontWeight: 600, fontSize: '15px',
+                          background: 'none', border: 'none', padding: 0, cursor: post.authorId ? 'pointer' : 'default', color: '#2563eb'
+                        }}
+                      >
+                        {post.author}
+                      </button>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>{post.createdAt}</div>
                     </div>
+                  </div>
                     {post.authorId === user?.userId && (
                       <button
                         onClick={() => handleDeletePost(post.id)}
@@ -550,18 +733,16 @@ export default function EventFeed() {
                       style={{
                         background: 'none',
                         border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: post.isLiked ? '#ef4444' : '#6b7280',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <span style={{ fontSize: '18px' }}>
-                        {post.isLiked ? '❤️' : '🤍'}
-                      </span>
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: post.isLiked ? '#2563eb' : '#6b7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                      <span style={{ fontSize: '18px' }}>👍</span>
                       <span>{post.likesCount} lượt thích</span>
                     </button>
                   </div>
@@ -584,29 +765,161 @@ export default function EventFeed() {
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontWeight: 600, fontSize: '13px' }}>{comment.author}</span>
-                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>{comment.createdAt}</span>
-                          </div>
-                          {comment.authorId === user?.userId && (
-                            <button
-                              onClick={() => handleDeleteComment(post.id, comment.id)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                fontSize: '12px'
-                              }}
-                            >
-                              Xóa
-                            </button>
-                          )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, width: '100%' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <button
+                            onClick={() => handleOpenProfile(comment.authorId)}
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              textAlign: 'left',
+                              cursor: comment.authorId ? 'pointer' : 'default',
+                              color: '#2563eb'
+                            }}
+                          >
+                            {comment.author}
+                          </button>
+                          <span style={{ fontSize: '12px', color: '#9ca3af' }}>{comment.createdAt}</span>
                         </div>
-                        <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
-                          {comment.content}
-                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+                          {comment.authorId === user?.userId && (
+                            <div style={{ position: 'relative' }}>
+                              <button
+                                onClick={() => setCommentMenus(prev => ({ ...prev, [`${post.id}_${comment.id}`]: !prev[`${post.id}_${comment.id}`] }))}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#6b7280',
+                                  cursor: 'pointer',
+                                  fontSize: '16px',
+                                  padding: 4
+                                }}
+                                aria-label="Mở menu bình luận"
+                              >
+                                ⋯
+                              </button>
+                              {commentMenus[`${post.id}_${comment.id}`] && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 24,
+                                    background: '#fff',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: 8,
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                                    padding: '6px 0',
+                                    zIndex: 10,
+                                    minWidth: 120
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => startEditComment(post.id, comment.id, comment.content)}
+                                    style={{
+                                      width: '100%',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      textAlign: 'left',
+                                      padding: '8px 12px',
+                                      cursor: 'pointer',
+                                    fontSize: '13px',
+                                    color: '#111827'
+                                  }}
+                                >
+                                    Chỉnh sửa
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteComment(post.id, comment.id)}
+                                    style={{
+                                      width: '100%',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      textAlign: 'left',
+                                      padding: '8px 12px',
+                                      cursor: 'pointer',
+                                      fontSize: '13px',
+                                      color: '#ef4444'
+                                    }}
+                                  >
+                                    Xóa
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleLikeComment(post.id, comment.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              border: 'none',
+                              background: 'transparent',
+                              color: comment.isLiked ? '#2563eb' : '#6b7280',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            <span style={{ fontSize: '16px' }}>👍</span>
+                            <span>{comment.likeCount || 0}</span>
+                          </button>
+                        </div>
                       </div>
+                    </div>
+                    {editingCommentInputs[comment.id] !== undefined ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        <input
+                          type="text"
+                          value={editingCommentInputs[comment.id]}
+                          onChange={(e) => setEditingCommentInputs(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                          style={{
+                            flex: 1,
+                            padding: '8px 10px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 8,
+                            fontSize: '14px'
+                          }}
+                        />
+                        <button
+                          onClick={() => submitEditComment(post.id, comment.id)}
+                          style={{
+                            padding: '8px 12px',
+                            background: '#2563eb',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600
+                          }}
+                        >
+                          Gửi
+                        </button>
+                        <button
+                          onClick={() => cancelEditComment(comment.id)}
+                          style={{
+                            padding: '8px 10px',
+                            background: '#e5e7eb',
+                            color: '#374151',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 500
+                          }}
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '14px', color: '#374151', margin: 0 }}>
+                        {comment.content}
+                      </p>
+                    )}
+                  </div>
                     ))}
 
                     {/* Comment pagination */}
@@ -785,7 +1098,8 @@ export default function EventFeed() {
           </div>
         </div>
       )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

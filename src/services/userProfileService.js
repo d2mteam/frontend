@@ -1,9 +1,8 @@
 import axiosClient from '../api/axiosClient';
+import graphqlClient from '../api/graphqlClient';
 
-// Lấy hồ sơ người dùng hiện tại (GraphQL có getUserProfile nhưng REST ở đây chỉ hỗ trợ create/edit)
-// Giữ hàm để tương thích UI, có thể dùng GraphQL getUserProfile nếu cần chi tiết
+// Lấy hồ sơ người dùng qua GraphQL getUserProfile
 export const getMyProfile = async (userId) => {
-  // Tạm dùng GraphQL getUserProfile qua axiosClient.post /graphql nếu cần
   try {
     const query = `
       query GetUserProfile($userId: ID!) {
@@ -19,11 +18,9 @@ export const getMyProfile = async (userId) => {
         }
       }
     `;
-    const resp = await axiosClient.post('/graphql', { query, variables: { userId } });
-    const profile = resp?.data?.data?.getUserProfile;
-    if (profile) {
-      return { success: true, data: profile };
-    }
+    const data = await graphqlClient.query(query, { userId });
+    const profile = data?.getUserProfile;
+    if (profile) return { success: true, data: profile };
     return { success: false, error: 'Không tìm thấy hồ sơ' };
   } catch (error) {
     console.error('Get profile error', error);
@@ -31,12 +28,39 @@ export const getMyProfile = async (userId) => {
   }
 };
 
-// Tạo/sửa hồ sơ qua REST /api/user-profiles (backend UserProfileController)
-export const updateMyProfile = async (userId, profileData) => {
+// Lấy hồ sơ bất kỳ (dùng chung getUserProfile)
+export const getProfileById = getMyProfile;
+
+// Cập nhật hồ sơ qua REST /api/user-profiles (backend UserProfileController)
+// Trả lại toàn bộ payload lỗi (nếu có) để UI hiển thị chi tiết validation
+export const updateMyProfile = async (_userId, profileData) => {
+  const token = localStorage.getItem('vh_access_token');
+  const payload = {
+    email: profileData.email || '',
+    fullName: profileData.fullName || '',
+    username: profileData.username || '',
+    avatarId: profileData.avatarId || '',
+    bio: profileData.bio || ''
+  };
   try {
-    const payload = { userId, ...profileData };
-    const data = await axiosClient.put('/user-profiles', payload);
-    return { success: true, data, message: 'Cập nhật thành công' };
+    const resp = await fetch('/api/user-profiles', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return {
+        success: false,
+        error: body?.message || 'Không thể cập nhật hồ sơ',
+        raw: body,
+      };
+    }
+    return { success: true, data: body, message: body?.message || 'Cập nhật thành công' };
   } catch (error) {
     console.error('Update profile error', error);
     return { success: false, error: error.message || 'Không thể cập nhật hồ sơ' };
@@ -54,3 +78,36 @@ export const createMyProfile = async (userId, profileData) => {
   }
 };
 
+// Danh sách người dùng (GraphQL findUserProfiles)
+export const findUserProfiles = async (page = 0, size = 10) => {
+  try {
+    const query = `
+      query FindUserProfiles($page: Int, $size: Int) {
+        findUserProfiles(page: $page, size: $size) {
+          content {
+            userId
+            username
+            fullName
+            avatarId
+            email
+            status
+            createdAt
+          }
+          pageInfo {
+            page
+            size
+            totalElements
+            totalPages
+            hasNext
+            hasPrevious
+          }
+        }
+      }
+    `;
+    const data = await graphqlClient.query(query, { page, size });
+    return { success: true, data: data.findUserProfiles };
+  } catch (error) {
+    console.error('Find user profiles error', error);
+    return { success: false, error: error.message || 'Không thể tải danh sách người dùng' };
+  }
+};

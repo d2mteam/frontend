@@ -150,27 +150,27 @@ export function AuthProvider({ children }) {
           // Fetch profile từ backend (có mock fallback trong service)
           const profileResult = await authService.getUserProfile(userId);
           
+          const roles = payload.roles || [];
+          const baseUser = {
+            id: userId,
+            userId: userId,
+            email: payload.email || '',
+            role: roles[0] || 'ADMIN'
+          };
+
           if (profileResult.data) {
-            // Decode token để lấy role từ JWT
-            const roles = payload.roles || [];
-            
-            const userData = {
-              id: userId,
-              userId: userId, // Add userId field
-              ...profileResult.data,
-              role: roles[0] || 'ADMIN' // Default to ADMIN if no role (for mock testing)
-            };
-            
-            // Log if using mock data
+            const userData = { ...baseUser, ...profileResult.data };
             if (profileResult.isMock) {
               console.info('🎭 Using Mock Admin Profile for UI Testing');
             }
-            
             setUser(userData);
           } else {
-            // Profile load failed even with mock fallback - logout to reset
-            console.error('❌ Profile load completely failed. Logging out...');
-            logout();
+            // Không có profile -> chuyển tới trang tạo hồ sơ
+            setUser(baseUser);
+            const currentPath = window.location.pathname;
+            if (!currentPath.startsWith('/profile')) {
+              window.location.replace('/profile?create=1');
+            }
           }
         } catch (error) {
           console.error('Failed to restore session:', error);
@@ -197,9 +197,11 @@ export function AuthProvider({ children }) {
 
       // 3. Gọi GraphQL để lấy Profile chi tiết
       let userProfile = {};
+      let profileExists = false;
       try {
         const profileResult = await authService.getUserProfile(userId);
         userProfile = profileResult.data || {};
+        profileExists = !!profileResult.data;
       } catch (err) {
         console.warn("User has no profile yet or error fetching profile");
       }
@@ -207,6 +209,7 @@ export function AuthProvider({ children }) {
       // 4. Merge data - Role chỉ lấy từ JWT token
       const finalUserData = {
         id: userId,
+        userId,
         email: email,
         ...userProfile,
         role: roles[0] || 'USER' // Lấy role đầu tiên từ JWT, không có fallback từ profile
@@ -219,6 +222,12 @@ export function AuthProvider({ children }) {
       setupPushNotification();
       
       setIsAuthOpen(false);
+      if (!profileExists) {
+        const currentPath = window.location.pathname;
+        if (!currentPath.startsWith('/profile')) {
+          window.location.replace('/profile?create=1');
+        }
+      }
       return finalUserData;
     } catch (error) {
       throw error;

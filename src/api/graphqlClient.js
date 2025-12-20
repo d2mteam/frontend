@@ -45,8 +45,20 @@ class GraphQLClient {
 
     const result = await response.json();
 
+    if (!response.ok) {
+      const reason = result?.reasonCode;
+      const msg = result?.message || result?.error || result?.errors?.[0]?.message || 'Request failed';
+      const combined = [reason ? `[${reason}]` : '', msg, response.status ? `(HTTP ${response.status})` : ''].filter(Boolean).join(' ');
+      const err = new Error(combined);
+      err.response = { status: response.status, data: result };
+      throw err;
+    }
+
     if (result.errors) {
-      throw new Error(result.errors[0].message);
+      const msg = result.errors.map((e) => e.message).join('; ');
+      const err = new Error(msg);
+      err.response = { status: response.status, data: result };
+      throw err;
     }
 
     return result.data;
@@ -83,7 +95,12 @@ export const restAPI = {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Request failed');
+      const reason = error?.reasonCode;
+      const msg = error?.message || error?.error || 'Request failed';
+      const combined = [reason ? `[${reason}]` : '', msg, `(HTTP ${response.status})`].filter(Boolean).join(' ');
+      const err = new Error(combined);
+      err.response = { status: response.status, data: error };
+      throw err;
     }
 
     return response.json();
@@ -107,7 +124,12 @@ export const restAPI = {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Request failed');
+      const reason = error?.reasonCode;
+      const msg = error?.message || error?.error || 'Request failed';
+      const combined = [reason ? `[${reason}]` : '', msg, `(HTTP ${response.status})`].filter(Boolean).join(' ');
+      const err = new Error(combined);
+      err.response = { status: response.status, data: error };
+      throw err;
     }
 
     return response.json();
@@ -132,7 +154,12 @@ export const restAPI = {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Request failed');
+      const reason = error?.reasonCode;
+      const msg = error?.message || error?.error || 'Request failed';
+      const combined = [reason ? `[${reason}]` : '', msg, `(HTTP ${response.status})`].filter(Boolean).join(' ');
+      const err = new Error(combined);
+      err.response = { status: response.status, data: error };
+      throw err;
     }
 
     return response.json();

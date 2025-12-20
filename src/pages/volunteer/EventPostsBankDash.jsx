@@ -55,6 +55,7 @@ export default function EventPostsBankDash() {
           memberCount: 0,
           postCount: 0,
           likeCount: eventData.likeCount || 0,
+          isLiked: false,
           creatorId: eventData.createBy?.userId,
           creatorName: eventData.createBy?.username || eventData.createBy?.fullName || 'Unknown'
         });
@@ -77,6 +78,7 @@ export default function EventPostsBankDash() {
               content: c.content,
               createdAt: c.createdAt,
               likeCount: c.likeCount,
+              isLiked: false,
               creatorId: c.creatorInfo?.userId,
               creatorName: c.creatorInfo?.username || c.creatorInfo?.fullName || 'Anonymous',
               creatorAvatar: c.creatorInfo?.avatarId
@@ -205,6 +207,25 @@ export default function EventPostsBankDash() {
     }
   };
 
+  const handleLikeEvent = async () => {
+    if (!event) return;
+    const previous = event;
+    const nextLiked = !previous.isLiked;
+    const nextCount = Math.max(0, (previous.likeCount || 0) + (nextLiked ? 1 : -1));
+    setEvent({ ...previous, isLiked: nextLiked, likeCount: nextCount });
+
+    try {
+      const result = await toggleLikeGraphQL(eventId, 'EVENT');
+      if (!result.success) {
+        setEvent(previous);
+        showNotification('Không thể thích sự kiện', 'error');
+      }
+    } catch (error) {
+      setEvent(previous);
+      showNotification('Không thể thích sự kiện', 'error');
+    }
+  };
+
   const handleLikePost = async (postId) => {
     const post = posts.find(p => p.id === postId);
     if (!post) return;
@@ -261,6 +282,7 @@ export default function EventPostsBankDash() {
           content: commentText,
           createdAt: new Date().toISOString(),
           likeCount: 0,
+          isLiked: false,
           creatorId: user?.userId,
           creatorName: user?.username || user?.fullName || 'Bạn',
           creatorAvatar: user?.avatarId
@@ -295,6 +317,75 @@ export default function EventPostsBankDash() {
     }
   };
 
+  const handleLikeComment = async (postId, commentId) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: p.comments.map(c => {
+            if (c.id === commentId) {
+              const nextLiked = !c.isLiked;
+              return {
+                ...c,
+                isLiked: nextLiked,
+                likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+              };
+            }
+            return c;
+          })
+        };
+      }
+      return p;
+    }));
+
+    try {
+      const result = await toggleLikeGraphQL(commentId, 'COMMENT');
+      if (!result.success) {
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments: p.comments.map(c => {
+                if (c.id === commentId) {
+                  const nextLiked = !c.isLiked;
+                  return {
+                    ...c,
+                    isLiked: nextLiked,
+                    likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                  };
+                }
+                return c;
+              })
+            };
+          }
+          return p;
+        }));
+        showNotification('Không thể thích bình luận', 'error');
+      }
+    } catch (error) {
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            comments: p.comments.map(c => {
+              if (c.id === commentId) {
+                const nextLiked = !c.isLiked;
+                return {
+                  ...c,
+                  isLiked: nextLiked,
+                  likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                };
+              }
+              return c;
+            })
+          };
+        }
+        return p;
+      }));
+      showNotification('Không thể thích bình luận', 'error');
+    }
+  };
+
   const handleCommentPageChange = async (postId, page) => {
     const info = commentPageInfo[postId];
     if (!info || page < 0 || page >= info.totalPages) return;
@@ -309,6 +400,7 @@ export default function EventPostsBankDash() {
           content: c.content,
           createdAt: c.createdAt,
           likeCount: c.likeCount,
+          isLiked: false,
           creatorId: c.creatorInfo?.userId,
           creatorName: c.creatorInfo?.username || c.creatorInfo?.fullName || 'Anonymous',
           creatorAvatar: c.creatorInfo?.avatarId
@@ -461,6 +553,22 @@ export default function EventPostsBankDash() {
 
           {/* Action Bar - Role-based */}
           <div className="flex gap-3 pt-6 border-t border-gray-100">
+            <button 
+              onClick={handleLikeEvent}
+              className={`px-4 py-3 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all ${
+                event.isLiked
+                  ? 'bg-[#FEF2F2] text-[#FE5C73] border border-[#FE5C73]/40'
+                  : 'bg-gray-100 text-[#343C6A] hover:bg-gray-200'
+              }`}
+            >
+              <Heart 
+                size={20} 
+                fill={event.isLiked ? 'currentColor' : 'none'}
+                className={event.isLiked ? 'animate-pulse' : ''}
+              />
+              <span>{event.likeCount || 0} lượt thích</span>
+            </button>
+
             {user?.role === 'USER' && !isRegistered && (
               <button 
                 onClick={handleRegisterEvent}
@@ -545,23 +653,24 @@ export default function EventPostsBankDash() {
                   setPostForm({ content: post.content });
                   setShowEditPostModal(true);
                 }}
+                onLikeComment={(commentId) => handleLikeComment(post.id, commentId)}
                 commentInput={commentInputs[post.id] || ''}
                 onCommentChange={(value) => setCommentInputs({ ...commentInputs, [post.id]: value })}
                 onCommentSubmit={() => handleAddComment(post.id)}
                 isExpanded={expandedComments[post.id]}
                 onToggleComments={() => setExpandedComments({ 
                   ...expandedComments, 
-              [post.id]: !expandedComments[post.id] 
-            })}
-            commentPageInfo={commentPageInfo[post.id]}
-            onCommentPageChange={(page) => handleCommentPageChange(post.id, page)}
-            renderPagination={renderPagination}
-          />
-        ))}
+                  [post.id]: !expandedComments[post.id] 
+                })}
+                commentPageInfo={commentPageInfo[post.id]}
+                onCommentPageChange={(page) => handleCommentPageChange(post.id, page)}
+                renderPagination={renderPagination}
+              />
+            ))}
 
-        {renderPagination(postPageInfo, handlePostPageChange)}
-      </div>
-    )}
+            {renderPagination(postPageInfo, handlePostPageChange)}
+          </div>
+        )}
       </div>
 
       {/* Create Post Modal */}
@@ -626,7 +735,7 @@ function MetaItem({ icon: Icon, label, value }) {
 }
 
 function PostCard({ 
-  post, currentUser, onLike, onDelete, onEdit,
+  post, currentUser, onLike, onDelete, onEdit, onLikeComment,
   commentInput, onCommentChange, onCommentSubmit,
   isExpanded, onToggleComments, commentPageInfo, onCommentPageChange, renderPagination
 }) {
@@ -738,7 +847,18 @@ function PostCard({
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm text-[#343C6A]">{comment.creatorName}</span>
-                      <span className="text-xs text-[#718EBF]">{formatDate(comment.createdAt)}</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => onLikeComment(post.id, comment.id)}
+                          className={`flex items-center gap-1 text-xs font-semibold ${
+                            comment.isLiked ? 'text-[#FE5C73]' : 'text-[#718EBF] hover:text-[#FE5C73]'
+                          }`}
+                        >
+                          <Heart size={14} fill={comment.isLiked ? 'currentColor' : 'none'} />
+                          <span>{comment.likeCount || 0}</span>
+                        </button>
+                        <span className="text-xs text-[#718EBF]">{formatDate(comment.createdAt)}</span>
+                      </div>
                     </div>
                     <p className="text-sm text-[#718EBF] mt-1">{comment.content}</p>
                   </div>

@@ -6,13 +6,21 @@
 import graphqlClient from '../api/graphqlClient';
 import axiosClient from '../api/axiosClient';
 
-const parseModeration = (res) => ({
-  success: res?.result === 'SUCCESS' || !res?.result,
-  message: res?.message || '',
-  data: res,
-  id: res?.targetId,
-  toastType: res?.result === 'SUCCESS' || !res?.result ? 'success' : 'error',
-});
+const parseModeration = (res) => {
+  const success = res?.result === 'SUCCESS' || !res?.result;
+  const reason = res?.reasonCode;
+  const msg = res?.message || '';
+  const combined = reason ? `[${reason}] ${msg}` : msg;
+  return {
+    success,
+    message: combined,
+    error: success ? undefined : combined,
+    data: res,
+    id: res?.targetId,
+    reasonCode: reason,
+    toastType: success ? 'success' : 'error',
+  };
+};
 
 // Create a new post (REST)
 export const createPost = async ({ eventId, body }) => {

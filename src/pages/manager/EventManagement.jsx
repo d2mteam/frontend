@@ -6,7 +6,7 @@ import {
 import Sidebar from "../../components/common/Sidebar";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNotification } from "../../contexts/NotificationContext";
-import { getAllEvents, createEvent } from "../../services/eventService";
+import { getManagerEvents, createEvent, updateEvent, deleteEvent } from "../../services/eventService";
 import '../../assets/styles/home.css';
 
 export default function EventManagement() {
@@ -20,22 +20,21 @@ export default function EventManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [newEvent, setNewEvent] = useState({
     eventName: '',
     eventDescription: '',
     eventLocation: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: ''
+    categories: [],
+    categoriesInput: ''
   });
 
-  // Fetch events from database
+  // Fetch events created/managed by this manager (tạm dùng findEvents)
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAllEvents(0, 100);
+      const response = await getManagerEvents(0, 100);
       
       if (response.success && response.data) {
         const mapped = response.data.map(event => ({
@@ -49,7 +48,10 @@ export default function EventManagement() {
           memberCount: event.memberCount || 0,
           postCount: event.postCount || 0,
           likeCount: event.likeCount || 0,
-          creatorInfo: event.creatorInfo || {},
+          categories: event.categories || [],
+          creatorName: event.createBy?.fullName || event.createBy?.username || 'Ẩn danh',
+          creatorUsername: event.createBy?.username || '',
+          creatorId: event.createBy?.userId || '',
           createdAt: event.createdAt || new Date().toISOString()
         }));
         setEvents(mapped);
@@ -133,7 +135,36 @@ export default function EventManagement() {
     navigate(`/eventPosts/${eventId}`);
   };
 
+  const handleManageMembers = (eventId) => {
+    navigate(`/event-manager/events/${eventId}/manage`);
+  };
+
+  const handleEdit = (event) => {
+    setNewEvent({
+      eventName: event.title || event.eventName || '',
+      eventDescription: event.description || event.eventDescription || '',
+      eventLocation: event.location || event.eventLocation || '',
+      categories: event.categories || [],
+      categoriesInput: (event.categories || []).join(', ')
+    });
+    setEditingEventId(event.id);
+    setShowCreateModal(true);
+  };
+
+  const handleDelete = async (eventId) => {
+    const confirm = window.confirm("Bạn có chắc muốn xóa sự kiện này?");
+    if (!confirm) return;
+    const res = await deleteEvent(eventId);
+    if (res.success) {
+      showNotification("Đã xóa sự kiện", "success");
+      setEvents(prev => prev.filter(e => e.id !== eventId));
+    } else {
+      showNotification(res.error || "Không thể xóa sự kiện", "error");
+    }
+  };
+
   const handleCreateEvent = async () => {
+    const isEditing = Boolean(editingEventId);
     try {
       if (!newEvent.eventName || !newEvent.eventDescription || !newEvent.eventLocation) {
         showNotification('Vui l\u00f2ng đi\u1ec1n đầy đủ th\u00f4ng tin!', 'error');
@@ -141,31 +172,26 @@ export default function EventManagement() {
       }
 
       const input = {
-        eventName: newEvent.eventName,
-        eventDescription: newEvent.eventDescription,
-        eventLocation: newEvent.eventLocation,
-        eventDate: newEvent.startDate || null,
-        startTime: newEvent.startDate && newEvent.startTime 
-          ? new Date(newEvent.startDate + 'T' + newEvent.startTime).toISOString() 
-          : null,
-        endAt: newEvent.endDate && newEvent.endTime 
-          ? new Date(newEvent.endDate + 'T' + newEvent.endTime).toISOString() 
-          : null
+        eventName: newEvent.eventName.trim(),
+        eventDescription: newEvent.eventDescription.trim(),
+        eventLocation: newEvent.eventLocation.trim(),
+        categories: (newEvent.categoriesInput || '')
+          .split(',')
+          .map(c => c.trim())
+          .filter(Boolean)
       };
 
-      const response = await createEvent(input);
-      
+      const response = isEditing ? await updateEvent(editingEventId, input) : await createEvent(input);
       if (response.success) {
-        showNotification('S\u1ef1 ki\u1ec7n \u0111\u00e3 \u0111\u01b0\u1ee3c t\u1ea1o v\u00e0 \u0111ang ch\u1edd duy\u1ec7t!', 'success');
+        showNotification(isEditing ? 'C\u1eadp nh\u1eadt s\u1ef1 ki\u1ec7n th\u00e0nh c\u00f4ng!' : 'S\u1ef1 ki\u1ec7n \u0111\u00e3 \u0111\u01b0\u1ee3c t\u1ea1o v\u00e0 \u0111ang ch\u1edd duy\u1ec7t!', 'success');
         setShowCreateModal(false);
+        setEditingEventId(null);
         setNewEvent({
           eventName: '',
           eventDescription: '',
           eventLocation: '',
-          startDate: '',
-          startTime: '',
-          endDate: '',
-          endTime: ''
+          categories: [],
+          categoriesInput: ''
         });
         fetchEvents();
       } else {
@@ -184,7 +210,7 @@ export default function EventManagement() {
         {/* Header */}
         <div className="main-header">
           <div>
-            <h1 className="dashboard-title">Quản Lý Sự Kiện 📅</h1>
+            <h1 className="dashboard-title">Quản Lý Sự Kiện</h1>
             <p className="dashboard-subtitle">Tạo và quản lý các sự kiện của bạn</p>
           </div>
           
@@ -359,6 +385,7 @@ export default function EventManagement() {
           <div className="events-grid">
             {filteredEvents().map((event) => {
               const badge = getStatusBadgeStyle(event.status);
+              const isOwner = event.creatorId && event.creatorId === user?.userId;
               
               return (
                 <div key={event.id} className="event-card-modern">
@@ -379,6 +406,12 @@ export default function EventManagement() {
                     {event.description.length > 100 && '...'}
                   </p>
                   
+                  <div className="event-meta" style={{ marginTop: '-0.5rem' }}>
+                    <span className="meta-item">
+                      👤 Người tạo: {event.creatorName || 'Ẩn danh'}
+                    </span>
+                  </div>
+
                   <div className="event-meta">
                     <span className="meta-item">
                       <MapPin className="w-4 h-4" />
@@ -399,6 +432,15 @@ export default function EventManagement() {
                       📝 {event.postCount} bài viết
                     </span>
                   </div>
+                  {event.categories && event.categories.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+                      {event.categories.map((c) => (
+                        <span key={c} style={{ padding: '4px 10px', borderRadius: 999, background: '#eef2ff', color: '#4338ca', fontSize: '12px' }}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   
                   <button 
                     onClick={() => handleViewPosts(event.id)}
@@ -408,6 +450,39 @@ export default function EventManagement() {
                     <Eye className="w-5 h-5" />
                     Xem chi tiết
                   </button>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    {isOwner && (
+                      <>
+                        <button
+                          onClick={() => handleEdit(event)}
+                          className="event-join-btn"
+                          style={{
+                            flex: 1,
+                            background: '#f1f5f9',
+                            color: '#111827',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          onClick={() => handleManageMembers(event.id)}
+                          className="event-join-btn"
+                          style={{ flex: 1 }}
+                        >
+                          Quản lý
+                        </button>
+                        <button
+                          onClick={() => handleDelete(event.id)}
+                          className="event-join-btn"
+                          style={{ flex: 1, background: '#dc2626' }}
+                        >
+                          Xóa
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -437,7 +512,9 @@ export default function EventManagement() {
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>
-              <h2 style={{ marginBottom: '1.5rem', color: '#0f172a' }}>Tạo Sự Kiện Mới</h2>
+              <h2 style={{ marginBottom: '1.5rem', color: '#0f172a' }}>
+                {editingEventId ? 'Sửa Sự Kiện' : 'Tạo Sự Kiện Mới'}
+              </h2>
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
@@ -480,6 +557,28 @@ export default function EventManagement() {
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
+                  Danh mục (phân tách bằng dấu phẩy)
+                </label>
+                <input
+                  type="text"
+                  value={newEvent.categoriesInput}
+                  onChange={(e) => setNewEvent({
+                    ...newEvent,
+                    categoriesInput: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem'
+                  }}
+                  placeholder="Ví dụ: Tình nguyện, Môi trường"
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
                   Địa điểm
                 </label>
                 <input
@@ -495,82 +594,6 @@ export default function EventManagement() {
                   }}
                   placeholder="Nhập địa điểm"
                 />
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
-                    Ngày bắt đầu
-                  </label>
-                  <input
-                    type="date"
-                    value={newEvent.startDate}
-                    onChange={(e) => setNewEvent({...newEvent, startDate: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                </div>
-                
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
-                    Giờ bắt đầu
-                  </label>
-                  <input
-                    type="time"
-                    value={newEvent.startTime}
-                    onChange={(e) => setNewEvent({...newEvent, startTime: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
-                    Ngày kết thúc
-                  </label>
-                  <input
-                    type="date"
-                    value={newEvent.endDate}
-                    onChange={(e) => setNewEvent({...newEvent, endDate: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                </div>
-                
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#475569' }}>
-                    Giờ kết thúc
-                  </label>
-                  <input
-                    type="time"
-                    value={newEvent.endTime}
-                    onChange={(e) => setNewEvent({...newEvent, endTime: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '0.95rem'
-                    }}
-                  />
-                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -602,7 +625,7 @@ export default function EventManagement() {
                     cursor: 'pointer'
                   }}
                 >
-                  Tạo Sự Kiện
+                  {editingEventId ? 'Lưu thay đổi' : 'Tạo Sự Kiện'}
                 </button>
               </div>
             </div>

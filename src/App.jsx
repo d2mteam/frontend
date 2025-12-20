@@ -29,14 +29,16 @@ import EventsVolunteer from './pages/volunteer/EventsVolunteer'
 import History from './pages/volunteer/History'
 import Notification from './pages/volunteer/Notification'
 import EventFeed from './components/event/EventFeed'
+import UserPublicProfile from './pages/UserPublicProfile'
 
 // Import manager pages
 import EventManagement from './pages/manager/EventManagement'
 import EventManagementBankDash from './pages/manager/EventManagementBankDash'
+import EventMembers from './pages/manager/EventMembers'
 
 // Import admin pages
 import AdminEventManagement from './pages/admin/EventManagementBankDash'
-import UserManagement from './pages/admin/UserManagementBankDash'
+import UserManagement from './pages/admin/UserManagement'
 import UserProfileManagement from './pages/admin/UserProfileManagement'
 import ExportData from './pages/admin/ExportData'
 
@@ -161,6 +163,14 @@ function AppRouter() {
           </ProtectedRoute>
         } 
       />
+      <Route
+        path="/users/:userId"
+        element={
+          <ProtectedRoute>
+            <UserPublicProfile />
+          </ProtectedRoute>
+        }
+      />
 
       {/* User routes */}
       <Route
@@ -188,6 +198,15 @@ function AppRouter() {
         }
       />
 
+      <Route
+        path="/history"
+        element={
+          <ProtectedRoute>
+            <History />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Event Manager routes */}
       <Route
         path="/event-manager/events"
@@ -209,7 +228,7 @@ function AppRouter() {
         path="/event-manager/events/:eventId/manage"
         element={
           <RoleRoute allowedRoles={['EVENT_MANAGER']}>
-            <EventPostsNew />
+            <EventMembers />
           </RoleRoute>
         }
       />
@@ -242,12 +261,16 @@ function AppRouter() {
 
       {/* Admin routes */}
       <Route
-        path="/admin/events/review"
+        path="/admin/events"
         element={
           <RoleRoute allowedRoles={['ADMIN']}>
             <AdminEventManagement />
           </RoleRoute>
         }
+      />
+      <Route
+        path="/admin/events/review"
+        element={<Navigate to="/admin/events" replace />}
       />
       <Route
         path="/admin/users"

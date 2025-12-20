@@ -152,7 +152,7 @@ export default function ExportData() {
         <header className="page-header">
           <div className="page-header-title">
             <h1 className="page-title">Xuất tình nguyện viên theo sự kiện 📊</h1>
-            <p className="page-subtitle">Dùng API /api/exports/event-volunteers (ADMIN)</p>
+            <p className="page-subtitle">Xuất dữ liệu cần thiết</p>
           </div>
         </header>
 

@@ -49,8 +49,8 @@ export default function Header({ setCurrentPage, currentPage }) {
             </svg>
           </div>
           <div className="logo-text">
-            <div className="logo-main">Arise Hearts</div>
-            <div className="logo-sub">Volunteer Club</div>
+            <div className="logo-main">Volunteer Hub</div>
+            <div className="logo-sub">Nền tảng tình nguyện</div>
             <div className="logo-tagline">Make a Difference Today</div>
           </div>
         </div>
@@ -68,9 +68,8 @@ export default function Header({ setCurrentPage, currentPage }) {
           ))}
         </nav>
 
-        {/* Right Section - Auth or Avatar */}
         <div className="header-right">
-          {/* Auth Buttons or User Avatar - Desktop */}
+          {/* Desktop */}
           {!user ? (
             <div className="auth-buttons desktop-auth">
               <button 
@@ -114,7 +113,7 @@ export default function Header({ setCurrentPage, currentPage }) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     </svg>
-                    Quản lý dự án
+                    Trang chi tiết
                   </button>
                   <button 
                     className="menu-item"
@@ -130,7 +129,7 @@ export default function Header({ setCurrentPage, currentPage }) {
             </div>
           )}
 
-          {/* Mobile Hamburger Menu */}
+          {/* Mobile */}
           <button
             className={`hamburger ${isMenuOpen ? 'active' : ''}`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -193,7 +192,7 @@ export default function Header({ setCurrentPage, currentPage }) {
               className="mobile-menu-btn"
               onClick={() => { navigate('/dashboard'); setIsMenuOpen(false); }}
             >
-              Quản lý dự án
+              Trang chi tiết
             </button>
             <button 
               className="mobile-menu-btn"

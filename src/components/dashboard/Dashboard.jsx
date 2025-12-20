@@ -24,49 +24,6 @@ function Dashboard() {
     fetchDashboardData();
   }, [user?.role, hours]);
 
-  const sampleOverview = {
-    newlyPublished: [
-      {
-        eventId: '1',
-        eventName: 'Mùa Hè Xanh',
-        eventLocation: 'Hà Nội',
-        eventDescription: 'Chương trình tình nguyện hè',
-      },
-      {
-        eventId: '2',
-        eventName: 'Hiến Máu Nhân Đạo',
-        eventLocation: 'TP.HCM',
-        eventDescription: 'Giọt hồng sẻ chia',
-      },
-    ],
-    trending: [
-      {
-        event: {
-          eventId: '3',
-          eventName: 'Biển Sạch',
-          eventLocation: 'Đà Nẵng',
-          eventDescription: 'Làm sạch bãi biển',
-        },
-        newMemberCount: 15,
-        newCommentCount: 24,
-        newLikeCount: 60,
-        latestInteractionAt: new Date().toISOString(),
-      },
-    ],
-    recentWithNewPosts: [
-      {
-        event: {
-          eventId: '4',
-          eventName: 'Trồng Cây',
-          eventLocation: 'Huế',
-          eventDescription: 'Xanh hóa thành phố',
-        },
-        latestPostAt: new Date().toISOString(),
-        newPostCount: 3,
-      },
-    ],
-  };
-
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -94,7 +51,6 @@ function Dashboard() {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Fallback to basic stats
       setStats([
         { id: 1, label: 'Tổng Sự Kiện', value: '0', icon: '📅', color: '#10b981' },
         { id: 2, label: 'Thành Viên', value: '0', icon: '👥', color: '#3b82f6' },
@@ -115,11 +71,10 @@ function Dashboard() {
       <Sidebar />
 
       <main className="main-content" id="main-content">
-        {/* Header with user info */}
         <header className="main-header">
           <div>
-            <h1 className="dashboard-title">Chào mừng trở lại, {user?.name || 'bạn'}! 👋</h1>
-            <p className="dashboard-subtitle">Tổng quan hoạt động tình nguyện của bạn</p>
+            <h1 className="dashboard-title">Chào mừng đến với Dashboard! 👋</h1>
+            <p className="dashboard-subtitle">Tổng quan hoạt động tình nguyện</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <label style={{ fontWeight: 500, color: '#374151' }}>Khoảng thời gian:</label>
@@ -169,8 +124,7 @@ function Dashboard() {
           </div>
         </header>
 
-        {/* Statistics Cards - Grid Layout */}
-        <section className="stats-section">
+        <section className="stats-section" style={{ marginTop: 8 }}>
           <div className="stats-grid">
             {stats.map((stat) => (
               <div key={stat.id} className="stat-card" style={{ '--accent-color': stat.color }}>
@@ -184,32 +138,6 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* Recent Activities Table */}
-        {/* Newly Published */}
-        {overview?.newlyPublished?.length > 0 && (
-          <section className="events-section">
-            <div className="section-header">
-              <h2 className="section-title">Sự kiện mới</h2>
-            </div>
-            <div className="events-grid">
-              {overview.newlyPublished.map((event, idx) => (
-                <div key={idx} className="event-card-modern">
-                <div className="event-badge">Mới</div>
-                <h3 className="event-title">{event.eventName}</h3>
-                <p className="event-description">{event.eventDescription || 'Không có mô tả'}</p>
-                <div className="event-meta">
-                  <span className="meta-item">📍 {event.eventLocation || 'N/A'}</span>
-                </div>
-                <button className="event-join-btn" onClick={() => navigate(`/eventPosts/${event.eventId}`)}>
-                  Xem sự kiện
-                </button>
-              </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Recent with new posts */}
         {overview?.recentWithNewPosts?.length > 0 && (
           <section className="activities-section">
             <div className="section-header">
@@ -225,7 +153,7 @@ function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {overview.recentWithNewPosts.map((item, idx) => (
+                  {overview.recentWithNewPosts.slice(0, 6).map((item, idx) => (
                     <tr key={idx}>
                       <td className="activity-name">{item.event.eventName}</td>
                       <td className="date-cell">+{item.newPostCount}</td>
@@ -240,15 +168,37 @@ function Dashboard() {
           </section>
         )}
 
-        {/* Trending Section (from dashboardOverview) */}
+        {overview?.newlyPublished?.length > 0 && (
+          <section className="events-section">
+            <div className="section-header" style={{ marginBottom: 10 }}>
+              <h2 className="section-title">Sự kiện mới</h2>
+            </div>
+            <div className="events-grid">
+              {overview.newlyPublished.slice(0, 6).map((event, idx) => (
+                <div key={idx} className="event-card-modern dashboard-event-card">
+                  <div className="event-badge">Mới</div>
+                  <h3 className="event-title">{event.eventName}</h3>
+                  <p className="event-description">{event.eventDescription || 'Không có mô tả'}</p>
+                  <div className="event-meta">
+                    <span className="meta-item">📍 {event.eventLocation || 'N/A'}</span>
+                  </div>
+                  <button className="event-join-btn" onClick={() => navigate(`/eventPosts/${event.eventId}`)}>
+                    Xem sự kiện
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {overview?.trending?.length > 0 && (
           <section className="events-section">
             <div className="section-header">
               <h2 className="section-title">Sự kiện thịnh hành</h2>
             </div>
             <div className="events-grid">
-              {overview.trending.map((item, idx) => (
-                <div key={idx} className="event-card-modern">
+              {overview.trending.slice(0, 6).map((item, idx) => (
+                <div key={idx} className="event-card-modern dashboard-event-card">
                   <div className="event-badge featured">Trending</div>
                   <h3 className="event-title">{item.event.eventName}</h3>
                   <p className="event-description">{item.event.eventDescription || 'Không có mô tả'}</p>

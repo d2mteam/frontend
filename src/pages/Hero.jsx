@@ -50,11 +50,10 @@ export default function Hero() {
     const fetchEvents = async () => {
       try {
         setLoadingEvents(true)
-        const response = await getAllEvents(0, 50) // Get more events
+        const response = await getAllEvents(0, 50)
         if (response.success && response.data) {
-          // Filter only ACCEPTED events and map to card format
           const mappedEvents = response.data
-            .filter(event => event.eventState === 'ACCEPTED') // Only ACCEPTED events
+            .filter(event => event.eventState === 'ACCEPTED')
             .map(event => ({
               id: event.eventId,
               eventId: event.eventId,
@@ -80,18 +79,15 @@ export default function Hero() {
     fetchEvents()
   }, [])
 
-  // Filter out expired events (events before today) from approved events
   const activeEvents = approvedEvents.filter(event => {
     const eventDate = new Date(event.date)
     const today = new Date()
-    today.setHours(0, 0, 0, 0) // Reset time to start of day
+    today.setHours(0, 0, 0, 0)
     return eventDate >= today
   })
 
-  // Use database events for display
   const displayEvents = dbEvents.length > 0 ? dbEvents : activeEvents
 
-  // Calculate responsive events per page
   useEffect(() => {
     const updateEventsPerPage = () => {
       if (window.innerWidth < 768) {
@@ -108,7 +104,6 @@ export default function Hero() {
     return () => window.removeEventListener('resize', updateEventsPerPage)
   }, [])
 
-  // Navigation handlers - Move one event at a time
   const handlePrevious = () => {
     setCurrentEventIndex(prev => {
       if (prev === 0) {
@@ -130,29 +125,22 @@ export default function Hero() {
     })
   }
 
-  // Get visible events
   const visibleEvents = displayEvents.slice(currentEventIndex, currentEventIndex + eventsPerPage)
 
-  // Show navigation arrows only if there are more events than can be displayed
   const showNavigation = displayEvents.length > eventsPerPage
 
 
 
   return (
     <div className="hero-wrapper">
-      {/* Hero Banner */}
       <div className="hero-banner">
-        {/* Blue Overlay */}
         <div className="hero-overlay"></div>
 
-        {/* Content */}
         <div className="hero-content">
-          {/* Main Title - Improved with highlighted word */}
           <h1 className="hero-title">
             Cùng Nhau Tạo Nên <span className="highlight-accent">Sự Khác Biệt</span>
           </h1>
 
-          {/* Motivational Quote */}
           <p className="hero-quote">
             "Cách tốt nhất để tìm thấy chính mình là mất mình trong việc phục vụ người khác."
           </p>
@@ -160,7 +148,6 @@ export default function Hero() {
             — Mahatma Gandhi
           </p>
 
-          {/* Call-to-Action Buttons - Enhanced */}
           <div className="hero-buttons" style={{ justifyContent: user ? 'center' : 'flex-start' }}>
             {!user && (
               <button 
@@ -179,7 +166,6 @@ export default function Hero() {
             </button>
           </div>
 
-          {/* Statistics */}
           <div className="hero-stats">
             {[
               { icon: '👥', number: '500+', label: 'Tình Nguyện Viên Hoạt Động', iconClass: 'users-icon' },
@@ -228,12 +214,11 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* Events Section */}
       <section className="events-section" id="sukien">
         <div className="events-container">
           <h2 className="section-title">Sự Kiện Sắp Tới</h2>
           <p className="section-description">
-            Hãy xem những sự kiện tình nguyện từ database
+            Hãy xem những sự kiện tình nguyện sắp tới
           </p>
 
           {loadingEvents ? (
@@ -262,7 +247,6 @@ export default function Hero() {
                       onClick={() => navigate(`/eventPosts/${event.eventId}`)}
                       style={{ cursor: 'pointer' }}
                     >
-                      {/* Card Header with Gradient */}
                       <div className="event-card-header">
                         <div className="event-icon-circle">
                           <Calendar size={24} />
@@ -272,7 +256,6 @@ export default function Hero() {
                         </div>
                       </div>
 
-                      {/* Card Body */}
                       <div className="event-card-body">
                         <h3 className="event-card-title">{event.title}</h3>
                         <p className="event-card-description">
@@ -297,7 +280,6 @@ export default function Hero() {
                         </div>
                       </div>
 
-                      {/* Card Footer */}
                       <div className="event-card-footer">
                         <div className="event-stats">
                           <span className="event-stat">
@@ -326,7 +308,6 @@ export default function Hero() {
                 )}
               </div>
 
-              {/* Dots Indicator */}
               {displayEvents.length > 0 && showNavigation && (
                 <div className="carousel-dots">
                   {Array.from({ length: Math.max(0, displayEvents.length - eventsPerPage + 1) }).map((_, index) => (

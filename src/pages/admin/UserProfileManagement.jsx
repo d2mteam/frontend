@@ -4,9 +4,7 @@ import Sidebar from '../../components/common/Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyProfile, updateMyProfile, createMyProfile } from '../../services/userProfileService';
 import { showNotification } from '../../services/toastService';
-import { 
-  User, Mail, Phone, MapPin, Calendar, Edit, Save, X
-} from 'lucide-react';
+import { User, Mail, Edit, Save, X } from 'lucide-react';
 import '../../assets/styles/unified-dashboard.css';
 
 export default function UserProfileManagement() {
@@ -15,13 +13,14 @@ export default function UserProfileManagement() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [isNewProfile, setIsNewProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     bio: '',
-    phoneNumber: '',
-    address: '',
-    dateOfBirth: ''
+    email: '',
+    username: '',
+    avatarId: ''
   });
 
   useEffect(() => {
@@ -41,14 +40,28 @@ export default function UserProfileManagement() {
       
       if (response.success && response.data) {
         setProfile(response.data);
+        setIsNewProfile(false);
+        setEditing(false);
         setFormData({
           fullName: response.data.fullName || '',
           bio: response.data.bio || '',
-          phoneNumber: response.data.phoneNumber || '',
-          address: response.data.address || '',
-          dateOfBirth: response.data.dateOfBirth || ''
+          email: response.data.email || '',
+          username: response.data.username || '',
+          avatarId: response.data.avatarId || ''
         });
         console.info('Profile loaded:', response.data);
+      } else {
+        // Chưa có profile => bật chế độ tạo mới
+        setProfile(null);
+        setIsNewProfile(true);
+        setEditing(true);
+        setFormData({
+          fullName: '',
+          bio: '',
+          email: user?.email || '',
+          username: '',
+          avatarId: ''
+        });
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -69,20 +82,30 @@ export default function UserProfileManagement() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      // Nếu chưa có profile, thử tạo mới, nếu có thì update
-      const apiCall = profile ? updateMyProfile : createMyProfile;
-      const response = await apiCall(user.userId, formData);
+      const payload = {
+        fullName: formData.fullName,
+        bio: formData.bio,
+        email: formData.email,
+        username: formData.username,
+        avatarId: formData.avatarId
+      };
+
+      const response = isNewProfile
+        ? await createMyProfile(user.userId, payload)
+        : await updateMyProfile(user.userId, payload);
       
       if (response.success) {
         setProfile(response.data);
+        setIsNewProfile(false);
         setEditing(false);
-        showNotification(response.message || 'Cập nhật thành công!', 'success');
+        showNotification(response.message || (isNewProfile ? 'Tạo hồ sơ thành công!' : 'Cập nhật thành công!'), 'success');
       } else {
-        showNotification(response.error || 'Cập nhật thất bại', 'error');
+        const rawMsg = response.raw ? JSON.stringify(response.raw) : '';
+        showNotification(response.error || rawMsg || 'Lưu hồ sơ thất bại', 'error');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      showNotification('Có lỗi xảy ra khi cập nhật', 'error');
+      showNotification('Có lỗi xảy ra khi lưu hồ sơ', 'error');
     } finally {
       setSaving(false);
     }
@@ -92,9 +115,9 @@ export default function UserProfileManagement() {
     setFormData({
       fullName: profile?.fullName || '',
       bio: profile?.bio || '',
-      phoneNumber: profile?.phoneNumber || '',
-      address: profile?.address || '',
-      dateOfBirth: profile?.dateOfBirth || ''
+      email: profile?.email || '',
+      username: profile?.username || '',
+      avatarId: profile?.avatarId || ''
     });
     setEditing(false);
   };
@@ -108,12 +131,12 @@ export default function UserProfileManagement() {
         <header className="page-header">
           <div className="page-header-title">
             <h1 className="page-title">Hồ Sơ Cá Nhân 👤</h1>
-            <p className="page-subtitle">Quản lý thông tin cá nhân của bạn</p>
+            <p className="page-subtitle">{isNewProfile ? 'Tạo hồ sơ để hoàn tất đăng ký' : 'Quản lý thông tin cá nhân của bạn'}</p>
           </div>
           
           {/* Edit/Save Buttons */}
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {!editing ? (
+            {!editing && !isNewProfile ? (
               <button 
                 onClick={() => setEditing(true)}
                 className="btn-primary"
@@ -123,13 +146,15 @@ export default function UserProfileManagement() {
               </button>
             ) : (
               <>
-                <button 
-                  onClick={handleCancel}
-                  className="btn-secondary"
-                >
-                  <X className="w-5 h-5" />
-                  <span>Hủy</span>
-                </button>
+                {!isNewProfile && (
+                  <button 
+                    onClick={handleCancel}
+                    className="btn-secondary"
+                  >
+                    <X className="w-5 h-5" />
+                    <span>Hủy</span>
+                  </button>
+                )}
                 <button 
                   onClick={handleSave}
                   disabled={saving}
@@ -140,7 +165,7 @@ export default function UserProfileManagement() {
                   }}
                 >
                   <Save className="w-5 h-5" />
-                  <span>{saving ? 'Đang lưu...' : 'Lưu'}</span>
+                  <span>{saving ? 'Đang lưu...' : (isNewProfile ? 'Tạo hồ sơ' : 'Lưu')}</span>
                 </button>
               </>
             )}
@@ -152,12 +177,6 @@ export default function UserProfileManagement() {
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p className="loading-text">Đang tải hồ sơ...</p>
-          </div>
-        ) : !profile ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">👤</div>
-            <h3 className="empty-state-title">Không tìm thấy hồ sơ</h3>
-            <p className="empty-state-text">Vui lòng thử lại sau</p>
           </div>
         ) : (
           <>
@@ -180,7 +199,7 @@ export default function UserProfileManagement() {
                     backgroundColor: 'white',
                     color: '#10b981'
                   }}>
-                    {formData.fullName.charAt(0).toUpperCase()}
+                    {(formData.fullName || '?').charAt(0).toUpperCase()}
                   </div>
                   
                   {/* User Info */}
@@ -207,17 +226,65 @@ export default function UserProfileManagement() {
                         {formData.fullName}
                       </h2>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.9 }}>
-                      <Mail className="w-4 h-4" />
-                      <span>{user?.email || 'Chưa có email'}</span>
-                    </div>
+                    {editing ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+                          Email
+                          <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            className="form-input"
+                            style={{ marginTop: '6px', backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none' }}
+                            placeholder="email@example.com"
+                          />
+                        </label>
+                        <label style={{ display: 'flex', flexDirection: 'column', color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+                          Username
+                          <input
+                            type="text"
+                            name="username"
+                            value={formData.username}
+                            onChange={handleInputChange}
+                            className="form-input"
+                            style={{ marginTop: '6px', backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none' }}
+                            placeholder="username"
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.9 }}>
+                          <Mail className="w-4 h-4" />
+                          <span>{formData.email || 'Chưa có email'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.9)' }}>
+                            Username: {formData.username || '-'}
+                          </span>
+                          <span
+                            style={{
+                              backgroundColor: '#ecfdf3',
+                              color: '#065f46',
+                              padding: '6px 10px',
+                              borderRadius: '999px',
+                              fontWeight: 700,
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            {profile.status || 'N/A'}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Profile Details */}
               <div style={{ padding: '0 2rem 2rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                   {/* Bio */}
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label className="form-label">
@@ -245,103 +312,6 @@ export default function UserProfileManagement() {
                         {formData.bio || 'Chưa có giới thiệu'}
                       </div>
                     )}
-                  </div>
-
-                  {/* Phone Number */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      <Phone className="w-4 h-4" style={{ display: 'inline', marginRight: '0.5rem' }} />
-                      Số điện thoại
-                    </label>
-                    {editing ? (
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleInputChange}
-                        className="form-input"
-                        placeholder="0901234567"
-                      />
-                    ) : (
-                      <div style={{
-                        padding: '0.875rem 1.25rem',
-                        backgroundColor: '#f8fafc',
-                        borderRadius: '12px',
-                        color: '#64748b',
-                        fontSize: '0.95rem'
-                      }}>
-                        {formData.phoneNumber || 'Chưa cập nhật'}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div className="form-group">
-                    <label className="form-label">
-                      <Calendar className="w-4 h-4" style={{ display: 'inline', marginRight: '0.5rem' }} />
-                      Ngày sinh
-                    </label>
-                    {editing ? (
-                      <input
-                        type="date"
-                        name="dateOfBirth"
-                        value={formData.dateOfBirth}
-                        onChange={handleInputChange}
-                        className="form-input"
-                      />
-                    ) : (
-                      <div style={{
-                        padding: '0.875rem 1.25rem',
-                        backgroundColor: '#f8fafc',
-                        borderRadius: '12px',
-                        color: '#64748b',
-                        fontSize: '0.95rem'
-                      }}>
-                        {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Address */}
-                  <div style={{ gridColumn: '1 / -1' }} className="form-group">
-                    <label className="form-label">
-                      <MapPin className="w-4 h-4" style={{ display: 'inline', marginRight: '0.5rem' }} />
-                      Địa chỉ
-                    </label>
-                    {editing ? (
-                      <input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        className="form-input"
-                        placeholder="123 Nguyễn Huệ, Q.1, TP.HCM"
-                      />
-                    ) : (
-                      <div style={{
-                        padding: '0.875rem 1.25rem',
-                        backgroundColor: '#f8fafc',
-                        borderRadius: '12px',
-                        color: '#64748b',
-                        fontSize: '0.95rem'
-                      }}>
-                        {formData.address || 'Chưa cập nhật'}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Timestamps */}
-                <div style={{ 
-                  marginTop: '1.5rem', 
-                  paddingTop: '1.5rem', 
-                  borderTop: '1px solid #e2e8f0',
-                  fontSize: '0.875rem',
-                  color: '#94a3b8'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Ngày tạo: {profile.createdAt ? new Date(profile.createdAt).toLocaleString('vi-VN') : '-'}</span>
-                    <span>Cập nhật: {profile.updatedAt ? new Date(profile.updatedAt).toLocaleString('vi-VN') : '-'}</span>
                   </div>
                 </div>
               </div>

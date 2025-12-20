@@ -185,7 +185,7 @@ body {
 .main-content {
     margin-left: 280px;
     width: calc(100% - 280px);
-    padding: 2.5rem 3rem;
+    padding: 2.25rem 2.5rem;
     min-height: 0;
     height: 100vh;
     overflow-y: auto;
@@ -215,8 +215,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2.5rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -240,8 +240,8 @@ body {
     align-items: center;
     gap: 1rem;
     background: white;
-    padding: 0.75rem 1.25rem;
-    border-radius: 50px;
+    padding: 0.65rem 1rem;
+    border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     transition: all 0.2s ease;
 }
@@ -346,19 +346,19 @@ body {
 
 /* Statistics Section */
 .stats-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.1rem;
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .stat-card {
     background: white;
-    border-radius: 16px;
-    padding: 1.75rem;
+    border-radius: 14px;
+    padding: 1.25rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     border-left: 4px solid var(--accent-color, #10b981);
     display: flex;
@@ -425,7 +425,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
 }
 
 .section-title {
@@ -454,7 +454,7 @@ body {
 
 /* Activities Section */
 .activities-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 0.9rem;
 }
 
 .table-container {
@@ -476,7 +476,7 @@ body {
 
 .activities-table th {
     text-align: left;
-    padding: 1.25rem 1.5rem;
+    padding: 0.9rem 1.1rem;
     font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -498,7 +498,7 @@ body {
 }
 
 .activities-table td {
-    padding: 1.25rem 1.5rem;
+    padding: 0.9rem 1.1rem;
     font-size: 0.95rem;
     color: #334155;
 }
@@ -560,19 +560,36 @@ body {
 
 /* Events Section */
 .events-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.1rem;
 }
 
 .events-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.85rem;
+}
+
+/* Admin event review grid: luôn chia 3 cột trên desktop */
+.admin-events-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 960px) {
+    .admin-events-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-events-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .event-card-modern {
     background: white;
-    border-radius: 16px;
-    padding: 1.75rem;
+    border-radius: 14px;
+    padding: 1.25rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     transition: all 0.3s ease;
     position: relative;
@@ -613,16 +630,17 @@ body {
 .event-description {
     color: #64748b;
     font-size: 0.95rem;
-    margin: 0 0 1.25rem 0;
+    margin: 0 0 1.1rem 0;
     line-height: 1.6;
 }
 
 .event-meta {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    padding-bottom: 1.25rem;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid #f1f5f9;
+    flex-wrap: wrap;
 }
 
 .meta-item {
@@ -640,7 +658,7 @@ body {
     color: white;
     border: none;
     border-radius: 12px;
-    padding: 0.875rem 1.5rem;
+    padding: 0.8rem 1.25rem;
     font-weight: 700;
     font-size: 0.95rem;
     cursor: pointer;
@@ -650,6 +668,37 @@ body {
 .event-join-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Dashboard event cards: giữ nội dung gọn trong khung */
+.dashboard-event-card {
+    padding: 1rem !important;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 240px;
+}
+
+.dashboard-event-card .event-title {
+    margin-bottom: 0.35rem;
+}
+
+.dashboard-event-card .event-description {
+    margin-bottom: 0.6rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.dashboard-event-card .event-meta {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    gap: 0.6rem;
+}
+
+.dashboard-event-card .event-join-btn {
+    margin-top: auto;
 }
 
 /* Responsive Design */

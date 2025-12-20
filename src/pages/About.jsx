@@ -5,17 +5,16 @@ export default function About() {
     <section className="about-section" id="aboutus">
       <div className="about-container">
         <h2 className="section-title">
-          Về Câu Lạc Bộ Tình Nguyện Arise Hearts
+          Về Dự Án Tình Nguyện Volunteer Hub
         </h2>
         <p className="section-description">
-          Chúng tôi là một cộng đồng học sinh đam mê tạo nên những thay đổi tích cực thông qua các hoạt động tình nguyện.
+          Chúng tôi là một cộng đồng đam mê tạo nên những thay đổi tích cực thông qua các hoạt động tình nguyện.
         </p>
 
-        {/* Feature Cards Grid */}
         <div className="feature-cards">
           {[
             { icon: '❤️', title: 'Phục Vụ Cộng Đồng', desc: 'Chúng tôi quan tâm sâu sắc đến cộng đồng mà chúng tôi phục vụ.' },
-            { icon: '👥', title: 'Mạng Lưới Học Sinh', desc: 'Cùng nhau, chúng ta đạt được nhiều hơn và tạo ra những liên kết mạnh hơn.' },
+            { icon: '👥', title: 'Mạng Lưới Thành viên', desc: 'Cùng nhau, chúng ta đạt được nhiều hơn và tạo ra những liên kết mạnh hơn.' },
             { icon: '🎯', title: 'Phát Triển Kỹ Năng', desc: 'Mỗi hành động được thúc đẩy bởi sứ mệnh và mục đích rõ ràng.' },
             { icon: '🌍', title: 'Tác Động Toàn Cầu', desc: 'Chúng tôi cố gắng đạt được kết quả tốt nhất trong tất cả các sáng kiến.' },
           ].map((card, i) => (
@@ -38,11 +37,11 @@ export default function About() {
             <h2>Tầm Nhìn & Sứ Mệnh</h2>
             <div className="vision-item">
               <h3>Tầm Nhìn</h3>
-              <p>Tạo dựng một cộng đồng các tình nguyện viên học sinh được trao quyền để chuyển đổi xã hội thông qua lòng trắc ẩn và hành động.</p>
+              <p>Tạo dựng một cộng đồng các tình nguyện viên được trao quyền để chuyển đổi xã hội thông qua lòng trắc ẩn và hành động.</p>
             </div>
             <div className="mission-item">
               <h3>Sứ Mệnh</h3>
-              <p>Truyền cảm hứng và thu hút học sinh tham gia vào những công việc tình nguyện có ý nghĩa tạo ra tác động tích cực bền vững trong giáo dục, y tế, môi trường và phát triển cộng đồng.</p>
+              <p>Truyền cảm hứng và thu hút mọi người tham gia vào những công việc tình nguyện có ý nghĩa tạo ra tác động tích cực bền vững trong giáo dục, y tế, môi trường và phát triển cộng đồng.</p>
             </div>
           </div>
           <div className="stats-grid">

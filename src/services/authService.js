@@ -9,7 +9,8 @@ import graphqlClient from '../api/graphqlClient';
 
 export const signup = async (email, password, role = 'USER') => {
   try {
-    const data = await axiosClient.post('/auth/signup', { email, password, role });
+    const isEventManager = role === 'EVENT_MANAGER';
+    const data = await axiosClient.post('/auth/signup', { email, password, isEventManager });
     return data;
   } catch (error) {
     throw new Error(error.message || 'Đăng ký thất bại');

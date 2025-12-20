@@ -88,9 +88,26 @@ export const getPostComments = async (postId, page = 0, size = 10) => {
 
     const data = await graphqlClient.query(query, { postId, page, size });
 
+    const listComment = data?.getPost?.listComment;
+    if (!listComment) {
+      return {
+        success: false,
+        error: 'Không tìm thấy bình luận',
+      };
+    }
+
+    // Chuẩn hóa để UI luôn có creatorInfo (tương tự khi load post ban đầu)
+    const normalized = {
+      ...listComment,
+      content: (listComment.content || []).map(c => ({
+        ...c,
+        creatorInfo: c.createBy,
+      })),
+    };
+
     return {
       success: true,
-      data: data.getPost.listComment
+      data: normalized
     };
   } catch (error) {
     console.error('Error fetching comments:', error);

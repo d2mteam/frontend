@@ -1,556 +1,295 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 import Sidebar from "../../components/common/Sidebar";
-import { getAllEvents, registerForEvent } from "../../services/eventService";
+import { searchEvents, registerForEvent, unregisterFromEvent } from "../../services/eventService";
 import { showNotification } from "../../services/toastService";
-import '../../assets/styles/home.css';
+import "../../assets/styles/home.css";
 
 export default function EventsVolunteer() {
   const navigate = useNavigate();
-  const handlePosts = (eventId) => {
-    navigate(`/eventPosts/${eventId}`);
-  };
-  
-  const [activeTab, setActiveTab] = useState("upcoming");
+  const [keyword, setKeyword] = useState("");
+  const [categoriesInput, setCategoriesInput] = useState("");
+  const [startDateFrom, setStartDateFrom] = useState("");
+  const [startDateTo, setStartDateTo] = useState("");
+  const [location, setLocation] = useState("");
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [registeredEventIds, setRegisteredEventIds] = useState([]);
-  
-  // Fetch events from backend
+
   useEffect(() => {
     fetchEvents();
   }, []);
-  
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await getAllEvents(0, 50);
-      if (response.success) {
-        // Map GraphQL data to frontend format
-        const mappedEvents = response.data.map(event => ({
-          id: event.eventId,
-          title: event.eventName || 'Sự kiện',
-          date: event.createdAt ? new Date(event.createdAt).toLocaleDateString('vi-VN') : 'Chưa rõ',
-          location: event.eventLocation || 'Chưa xác định',
-          desc: event.eventDescription || '',
-          status: 'upcoming',
-          attendees: 0,
-          image: null,
-          capacity: null,
-          creator: event.createBy?.username || event.createBy?.fullName || 'Unknown'
+      // Giảm tốc độ gửi request ~0.5s theo yêu cầu
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const startFrom = startDateFrom ? `${startDateFrom}T00:00:00` : null;
+      const startTo = startDateTo ? `${startDateTo}T23:59:59` : null;
+      const filter = {
+        keyword: keyword.trim() ? keyword.trim() : null,
+        categories: (categoriesInput || "")
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean),
+        startDateFrom: startFrom,
+        startDateTo: startTo,
+        location: location.trim() ? location.trim() : null
+      };
+      const res = await searchEvents(filter);
+      if (res.success) {
+        const mapped = res.data.map((e) => ({
+          id: e.eventId,
+          title: e.eventName || "Sự kiện",
+          location: e.eventLocation || "Chưa xác định",
+          desc: e.eventDescription || "",
+          date: e.createdAt ? new Date(e.createdAt).toLocaleDateString("vi-VN") : "",
+          categories: e.categories || [],
+          status: e.eventState || "PENDING", // backend trả eventState
+          isJoined: !!e.isJoined
         }));
-        setEvents(mappedEvents);
+        setEvents(mapped);
       }
     } catch (error) {
-      console.error('Error fetching events:', error);
-      showNotification('Không thể tải danh sách sự kiện', 'error');
+      showNotification("Không thể tải danh sách sự kiện", "error");
     } finally {
       setLoading(false);
     }
   };
-  
-  const filteredEvents = events.filter((e) => e.status === activeTab);
-  
-  const [registeringEvent, setRegisteringEvent] = useState(null);
-  const [showRegister, setShowRegister] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const handleRegister = (event) => {
-    setRegisteringEvent(event);
-    setShowRegister(true);
-  };
+  const filteredEvents = useMemo(() => events, [events]);
 
-  const closeRegister = () => {
-    setShowRegister(false);
-    setRegisteringEvent(null);
-  };
-
-  const submitRegistration = async (e) => {
-    e.preventDefault();
-    if (!registeringEvent || submitting) return;
-    
-    try {
-      setSubmitting(true);
-      const response = await registerForEvent(registeringEvent.id);
-      
-      if (response.success) {
-        showNotification('Đăng ký thành công! Chờ quản lý phê duyệt.', 'success');
-        setRegisteredEventIds(prev => [...prev, registeringEvent.id]);
-        closeRegister();
-        // Refresh events to get updated attendee count
-        fetchEvents();
-      }
-    } catch (error) {
-      const message = error.response?.data?.message || 'Đăng ký thất bại';
-      showNotification(message, 'error');
-    } finally {
-      setSubmitting(false);
+  const handleJoin = async (eventId) => {
+    const res = await registerForEvent(eventId);
+    if (res.success) {
+      showNotification("Đăng ký thành công", "success");
+      setEvents((prev) =>
+        prev.map((e) => (e.id === eventId ? { ...e, isJoined: true } : e))
+      );
+    } else {
+      showNotification(res.error || "Không thể đăng ký", "error");
     }
   };
 
-  const cancelRegistration = async (eventId) => {
-    // TODO: Implement cancel registration API if needed
-    alert("Chức năng hủy đăng ký sẽ được bổ sung sau.");
-  };  return (
+  const handleCancel = async (eventId) => {
+    const res = await unregisterFromEvent(eventId);
+    if (res.success) {
+      showNotification("Đã hủy đăng ký", "success");
+      setEvents((prev) =>
+        prev.map((e) => (e.id === eventId ? { ...e, isJoined: false } : e))
+      );
+    } else {
+      showNotification(res.error || "Không thể hủy đăng ký", "error");
+    }
+  };
+
+  const handleDetail = (eventId) => navigate(`/eventPosts/${eventId}`);
+
+  return (
     <div className="dashboard-container">
       <Sidebar />
-      <main className="main-content">
-        {/* Header Section */}
+      <main className="main-content" style={{ background: "#f6f7fb", minHeight: "100vh" }}>
         <div className="main-header">
           <div>
-            <h1 className="dashboard-title">Sự Kiện Tình Nguyện</h1>
-            <p className="dashboard-subtitle">Khám phá và tham gia các hoạt động thiện nguyện</p>
+            <h1 className="dashboard-title">Sự kiện</h1>
+            <p className="dashboard-subtitle">Danh sách sự kiện</p>
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="stats-section">
-          <div className="stats-grid">
-            <div className="stat-card" style={{"--accent-color": "#10b981"}}>
-              <div className="stat-icon">🎯</div>
-              <div className="stat-content">
-                <h3 className="stat-value">{filteredEvents.length}</h3>
-                <p className="stat-label">Sự kiện {activeTab === 'upcoming' ? 'sắp tới' : activeTab === 'ongoing' ? 'đang diễn' : 'hoàn thành'}</p>
-              </div>
-            </div>
-            <div className="stat-card" style={{"--accent-color": "#3b82f6"}}>
-              <div className="stat-icon">📅</div>
-              <div className="stat-content">
-                <h3 className="stat-value">{events.filter(e => e.status === 'upcoming').length}</h3>
-                <p className="stat-label">Sắp diễn ra</p>
-              </div>
-            </div>
-            <div className="stat-card" style={{"--accent-color": "#f59e0b"}}>
-              <div className="stat-icon">🔥</div>
-              <div className="stat-content">
-                <h3 className="stat-value">{events.filter(e => e.status === 'ongoing').length}</h3>
-                <p className="stat-label">Đang diễn ra</p>
-              </div>
-            </div>
-            <div className="stat-card" style={{"--accent-color": "#8b5cf6"}}>
-              <div className="stat-icon">✅</div>
-              <div className="stat-content">
-                <h3 className="stat-value">{registeredEventIds.length}</h3>
-                <p className="stat-label">Đã tham gia</p>
-              </div>
-            </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr repeat(3, minmax(140px, 1fr)) minmax(140px, 1fr) auto",
+            gap: "10px",
+            marginBottom: "12px",
+            alignItems: "end"
+          }}
+        >
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Tìm kiếm theo từ khóa"
+            className="form-input"
+            style={{ width: "100%" }}
+          />
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Địa điểm"
+            className="form-input"
+            style={{ width: "100%", minWidth: 140 }}
+          />
+          <input
+            type="text"
+            value={categoriesInput}
+            onChange={(e) => setCategoriesInput(e.target.value)}
+            placeholder="Danh mục (phân tách bằng dấu phẩy)"
+            className="form-input"
+            style={{ width: "100%", minWidth: 140 }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: "13px", color: "#6b7280" }}>Từ ngày</span>
+            <input
+              type="date"
+              value={startDateFrom}
+              onChange={(e) => setStartDateFrom(e.target.value)}
+              className="form-input"
+              style={{ width: "100%", minWidth: 140 }}
+            />
           </div>
-        </div>
-
-        {/* Tabs Navigation */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '12px', 
-          marginBottom: '2rem',
-          borderBottom: '2px solid #e2e8f0',
-          paddingBottom: '1rem'
-        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: "13px", color: "#6b7280" }}>Đến ngày</span>
+            <input
+              type="date"
+              value={startDateTo}
+              onChange={(e) => setStartDateTo(e.target.value)}
+              className="form-input"
+              style={{ width: "100%", minWidth: 140 }}
+            />
+          </div>
           <button
-            onClick={() => setActiveTab("upcoming")}
+            type="button"
+            onClick={fetchEvents}
             style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: '12px',
-              border: 'none',
-              fontWeight: '600',
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'upcoming' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
-              color: activeTab === 'upcoming' ? '#ffffff' : '#64748b',
-              boxShadow: activeTab === 'upcoming' ? '0 4px 12px rgba(16, 185, 129, 0.25)' : 'none'
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "none",
+              background: "#3b82f6",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer"
             }}
           >
-            🚀 Sắp diễn ra
-          </button>
-          <button
-            onClick={() => setActiveTab("ongoing")}
-            style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: '12px',
-              border: 'none',
-              fontWeight: '600',
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'ongoing' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent',
-              color: activeTab === 'ongoing' ? '#ffffff' : '#64748b',
-              boxShadow: activeTab === 'ongoing' ? '0 4px 12px rgba(245, 158, 11, 0.25)' : 'none'
-            }}
-          >
-            🔥 Đang diễn ra
-          </button>
-          <button
-            onClick={() => setActiveTab("completed")}
-            style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: '12px',
-              border: 'none',
-              fontWeight: '600',
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'completed' ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 'transparent',
-              color: activeTab === 'completed' ? '#ffffff' : '#64748b',
-              boxShadow: activeTab === 'completed' ? '0 4px 12px rgba(139, 92, 246, 0.25)' : 'none'
-            }}
-          >
-            ✅ Đã hoàn thành
+            <Search size={18} />
+            Tìm kiếm
           </button>
         </div>
 
-        {/* Events Grid */}
-        <div className="events-section">
+        <div className="events-section" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {loading ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '4rem 0',
-              color: '#64748b',
-              fontSize: '1.1rem'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+            <div style={{ textAlign: "center", padding: "4rem 0", color: "#64748b", fontSize: "1.1rem" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⏳</div>
               Đang tải danh sách sự kiện...
             </div>
           ) : filteredEvents.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '4rem 0',
-              color: '#64748b',
-              fontSize: '1.1rem'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+            <div style={{ textAlign: "center", padding: "4rem 0", color: "#64748b", fontSize: "1.1rem" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📭</div>
               Không có sự kiện nào
             </div>
           ) : (
-            <div className="events-grid">
-              {filteredEvents.map((event) => (
-                <div key={event.id} className="event-card-modern">
-                  {/* Event Image */}
-                  {event.image && (
-                    <div style={{ 
-                      marginBottom: '1.5rem', 
-                      borderRadius: '12px', 
-                      overflow: 'hidden',
-                      height: '200px'
-                    }}>
-                      <img 
-                        src={event.image} 
-                        alt={event.title}
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
-                          objectFit: 'cover',
-                          transition: 'transform 0.3s ease'
-                        }}
-                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      />
+            <div className="events-grid admin-events-grid">
+              {filteredEvents.map((event) => {
+                const isRegistered = !!event.isJoined;
+                return (
+                  <div
+                    key={event.id}
+                    className="event-card-modern"
+                    style={{
+                      padding: "1.2rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                      minHeight: "260px"
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <h3 className="event-title" style={{ margin: 0 }}>{event.title}</h3>
+                        <span style={{ color: "#111827", fontWeight: 600 }}>{event.date}</span>
+                      </div>
+                      <div style={{ color: "#6b7280" }}>{event.location}</div>
+                      <div style={{ color: "#374151" }}>
+                        {event.desc || "Tham gia cùng chúng tôi trong hoạt động ý nghĩa này!"}
+                      </div>
+                      {event.categories && event.categories.length > 0 && (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {event.categories.map((c) => (
+                            <span key={c} style={{ padding: "4px 10px", borderRadius: 999, background: "#eef2ff", color: "#4338ca", fontSize: "12px" }}>
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Status Badge */}
-                  <div className={`event-badge ${event.status === 'ongoing' ? 'featured' : ''}`}>
-                    {event.status === "upcoming" ? "🚀 Sắp tới"
-                      : event.status === "ongoing" ? "🔥 Đang diễn"
-                      : "✅ Hoàn thành"}
-                  </div>
-
-                  {/* Event Title */}
-                  <h3 className="event-title">{event.title}</h3>
-
-                  {/* Event Description */}
-                  <p className="event-description">
-                    {event.desc || 'Tham gia cùng chúng tôi trong hoạt động ý nghĩa này!'}
-                  </p>
-
-                  {/* Event Meta */}
-                  <div className="event-meta">
-                    <div className="meta-item">
-                      📅 {event.date}
-                    </div>
-                    <div className="meta-item">
-                      📍 {event.location}
-                    </div>
-                    <div className="meta-item">
-                      👥 {event.attendees}/{event.capacity || '∞'}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
-                    {event.status === "upcoming" && (
-                      !registeredEventIds.includes(event.id) ? (
-                        <button 
-                          className="event-join-btn" 
-                          onClick={() => handleRegister(event)}
-                          style={{ flex: 1 }}
-                        >
-                          🎯 Tham gia ngay
-                        </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: "auto" }}>
+                      {isRegistered ? (
+                        <>
+                          <button
+                            onClick={() => handleCancel(event.id)}
+                            style={{
+                              background: "#dc2626",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Hủy đăng ký
+                          </button>
+                          <button
+                            onClick={() => handleDetail(event.id)}
+                            style={{
+                              background: "#fff",
+                              color: "#5c4de1",
+                              border: "2px solid #5c4de1",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Xem chi tiết
+                          </button>
+                        </>
                       ) : (
-                        <button 
-                          onClick={() => cancelRegistration(event.id)}
-                          style={{
-                            flex: 1,
-                            background: '#fee2e2',
-                            color: '#dc2626',
-                            border: 'none',
-                            borderRadius: '12px',
-                            padding: '0.875rem 1.5rem',
-                            fontWeight: '700',
-                            fontSize: '0.95rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.background = '#fecaca';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.background = '#fee2e2';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                          }}
-                        >
-                          ❌ Hủy tham gia
-                        </button>
-                      )
-                    )}
-                    <button 
-                      onClick={(e) => { e.preventDefault(); handlePosts(event.id); }}
-                      style={{
-                        flex: event.status === "upcoming" ? '0 0 auto' : 1,
-                        background: 'white',
-                        color: '#10b981',
-                        border: '2px solid #10b981',
-                        borderRadius: '12px',
-                        padding: '0.875rem 1.5rem',
-                        fontWeight: '700',
-                        fontSize: '0.95rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = '#f0fdf4';
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'white';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      📝 Chi tiết
-                    </button>
+                        <>
+                          <button
+                            onClick={() => handleJoin(event.id)}
+                            style={{
+                              background: "linear-gradient(135deg, #5c4de1, #4f46e5)",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Đăng ký
+                          </button>
+                          <button
+                            onClick={() => handleDetail(event.id)}
+                            style={{
+                              background: "#fff",
+                              color: "#5c4de1",
+                              border: "2px solid #5c4de1",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Xem chi tiết
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </main>
-
-      {/* Registration Modal */}
-      {showRegister && registeringEvent && (
-        <div 
-          onClick={(e) => {
-            if (e.target.className === "register-overlay") closeRegister();
-          }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.6)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1200,
-            padding: 20,
-            animation: "fadeIn 0.2s ease"
-          }}
-          className="register-overlay"
-        >
-          <div 
-            role="dialog"
-            aria-modal="true"
-            style={{
-              width: "100%",
-              maxWidth: 600,
-              background: "#fff",
-              borderRadius: 16,
-              padding: "2rem",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-              animation: "slideUp 0.3s ease"
-            }}
-          >
-            {/* Modal Header */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: '1.5rem',
-              paddingBottom: '1rem',
-              borderBottom: '2px solid #e2e8f0'
-            }}>
-              <div>
-                <h3 style={{ 
-                  margin: 0, 
-                  fontSize: '1.5rem',
-                  fontWeight: '700',
-                  color: '#0f172a',
-                  marginBottom: '0.5rem'
-                }}>
-                  {registeringEvent.title}
-                </h3>
-                <div style={{ 
-                  fontSize: '0.95rem', 
-                  color: '#64748b',
-                  display: 'flex',
-                  gap: '1rem',
-                  alignItems: 'center'
-                }}>
-                  <span>📅 {registeringEvent.date}</span>
-                  <span>📍 {registeringEvent.location}</span>
-                </div>
-              </div>
-              <button 
-                onClick={closeRegister} 
-                aria-label="Close"
-                style={{
-                  border: "none",
-                  background: "#f1f5f9",
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  fontSize: '1.25rem',
-                  cursor: "pointer",
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = '#fee2e2';
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = '#f1f5f9';
-                  e.currentTarget.style.color = '#64748b';
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <form onSubmit={submitRegistration}
-              style={{ display: "flex", flexDirection: "column", gap: '1.5rem' }}
-            >
-              {/* Info Box */}
-              <div style={{ 
-                padding: '1.25rem', 
-                background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', 
-                borderRadius: '12px', 
-                fontSize: '0.95rem', 
-                color: '#065f46',
-                borderLeft: '4px solid #10b981'
-              }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '1.5rem' }}>ℹ️</span>
-                  <div>
-                    <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Xác nhận đăng ký</strong>
-                    Bạn đang đăng ký tham gia sự kiện này. Quản lý sẽ xem xét và phê duyệt đăng ký của bạn.
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Stats */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '1rem'
-              }}>
-                <div style={{
-                  padding: '1rem',
-                  background: '#f8fafc',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>
-                    Sức chứa
-                  </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#0f172a' }}>
-                    {registeringEvent.capacity || '∞'}
-                  </div>
-                </div>
-                <div style={{
-                  padding: '1rem',
-                  background: '#f8fafc',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.05em' }}>
-                    Đã đăng ký
-                  </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#10b981' }}>
-                    {registeringEvent.attendees}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{
-                display: "flex",
-                gap: '12px',
-                justifyContent: "flex-end",
-                paddingTop: '1rem',
-                borderTop: '1px solid #e2e8f0'
-              }}>
-                <button 
-                  type="button" 
-                  onClick={closeRegister}
-                  disabled={submitting}
-                  style={{
-                    padding: "0.875rem 1.5rem",
-                    borderRadius: '12px',
-                    border: '2px solid #e2e8f0',
-                    background: 'white',
-                    color: '#64748b',
-                    fontWeight: '600',
-                    fontSize: '0.95rem',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: submitting ? 0.5 : 1
-                  }}
-                  onMouseOver={(e) => !submitting && (e.currentTarget.style.background = '#f8fafc')}
-                  onMouseOut={(e) => !submitting && (e.currentTarget.style.background = 'white')}
-                >
-                  Hủy
-                </button>
-
-                <button 
-                  type="submit"
-                  disabled={submitting}
-                  style={{
-                    padding: "0.875rem 2rem",
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: submitting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
-                    color: 'white',
-                    fontWeight: '700',
-                    fontSize: '0.95rem',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: submitting ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)'
-                  }}
-                  onMouseOver={(e) => !submitting && (e.currentTarget.style.transform = 'translateY(-2px)')}
-                  onMouseOut={(e) => !submitting && (e.currentTarget.style.transform = 'translateY(0)')}
-                >
-                  {submitting ? '⏳ Đang gửi...' : '✅ Xác nhận đăng ký'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

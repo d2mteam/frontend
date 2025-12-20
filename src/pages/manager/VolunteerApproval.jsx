@@ -30,7 +30,6 @@ const VolunteerApprove = () => {
       <div className="user-table-container">
         <div style={{ marginBottom: '20px' }}>
           <h2 style={{ marginBottom: "10px" }}>Phê duyệt tình nguyện viên</h2>
-          <p style={{ color: '#6b7280' }}>Backend chưa có API list registrations; nhập registrationId để duyệt/từ chối.</p>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

@@ -71,6 +71,7 @@ export default function EventPostsNew() {
           location: eventData.eventLocation,
           createdAt: eventData.createdAt,
           likeCount: eventData.likeCount || 0,
+          isLiked: false,
           creatorId: eventData.createBy?.userId,
           creatorName: eventData.createBy?.username || eventData.createBy?.fullName || 'Unknown'
         });
@@ -94,6 +95,7 @@ export default function EventPostsNew() {
               content: c.content,
               createdAt: c.createdAt,
               likeCount: c.likeCount,
+              isLiked: false,
               creatorId: c.creatorInfo?.userId,
               creatorName: c.creatorInfo?.username || c.creatorInfo?.fullName || 'Anonymous',
               creatorAvatar: c.creatorInfo?.avatarId
@@ -106,11 +108,11 @@ export default function EventPostsNew() {
             createdAt: post.createdAt,
             updatedAt: post.updatedAt,
             likeCount: post.likeCount,
-            commentCount: commentInfo?.totalElements ?? post.commentCount ?? comments.length,
-            creatorId: post.creatorInfo?.userId,
-            creatorName: post.creatorInfo?.username || post.creatorInfo?.fullName || 'Anonymous',
-            creatorAvatar: post.creatorInfo?.avatarId,
-            isLiked: false, // Will be determined by backend in future
+          commentCount: commentInfo?.totalElements ?? post.commentCount ?? comments.length,
+          creatorId: post.creatorInfo?.userId,
+          creatorName: post.creatorInfo?.username || post.creatorInfo?.fullName || 'Anonymous',
+          creatorAvatar: post.creatorInfo?.avatarId,
+          isLiked: false, // Will be determined by backend in future
             comments,
             commentPageInfo: commentInfo
             };
@@ -150,6 +152,7 @@ export default function EventPostsNew() {
           content: c.content,
           createdAt: c.createdAt,
           likeCount: c.likeCount,
+          isLiked: false,
           creatorId: c.creatorInfo?.userId,
           creatorName: c.creatorInfo?.username || c.creatorInfo?.fullName || 'Anonymous',
           creatorAvatar: c.creatorInfo?.avatarId
@@ -324,6 +327,26 @@ export default function EventPostsNew() {
     }
   };
 
+  // Like/Unlike Event
+  const handleLikeEvent = async () => {
+    if (!event) return;
+    const previous = event;
+    const nextLiked = !previous.isLiked;
+    const nextCount = Math.max(0, (previous.likeCount || 0) + (nextLiked ? 1 : -1));
+    setEvent({ ...previous, isLiked: nextLiked, likeCount: nextCount });
+
+    try {
+      const response = await toggleLikeGraphQL(eventId, 'EVENT');
+      if (!response.success) {
+        setEvent(previous);
+        showNotification('Không thể thích sự kiện', 'error');
+      }
+    } catch (error) {
+      setEvent(previous);
+      showNotification('Không thể thích sự kiện', 'error');
+    }
+  };
+
   // Like/Unlike Post - Optimistic UI
   const handleLikePost = async (postId) => {
     // Optimistic update
@@ -402,6 +425,7 @@ export default function EventPostsNew() {
           content,
           createdAt: new Date().toISOString(),
           likeCount: 0,
+          isLiked: false,
           creatorId: user?.userId,
           creatorName: user?.username || user?.fullName || 'Bạn',
           creatorAvatar: user?.avatarId
@@ -429,6 +453,78 @@ export default function EventPostsNew() {
       }
     } catch (error) {
       showNotification('Lỗi khi bình luận', 'error');
+    }
+  };
+
+  // Like/Unlike Comment
+  const handleLikeComment = async (postId, commentId) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: p.comments.map(c => {
+            if (c.id === commentId) {
+              const nextLiked = !c.isLiked;
+              return {
+                ...c,
+                isLiked: nextLiked,
+                likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+              };
+            }
+            return c;
+          })
+        };
+      }
+      return p;
+    }));
+
+    try {
+      const response = await toggleLikeGraphQL(commentId, 'COMMENT');
+      if (!response.success) {
+        // Revert on failure
+        setPosts(prev => prev.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments: p.comments.map(c => {
+                if (c.id === commentId) {
+                  const nextLiked = !c.isLiked;
+                  return {
+                    ...c,
+                    isLiked: nextLiked,
+                    likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                  };
+                }
+                return c;
+              })
+            };
+          }
+          return p;
+        }));
+        showNotification('Không thể thích bình luận', 'error');
+      }
+    } catch (error) {
+      // Revert on error
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            comments: p.comments.map(c => {
+              if (c.id === commentId) {
+                const nextLiked = !c.isLiked;
+                return {
+                  ...c,
+                  isLiked: nextLiked,
+                  likeCount: Math.max(0, (c.likeCount || 0) + (nextLiked ? 1 : -1))
+                };
+              }
+              return c;
+            })
+          };
+        }
+        return p;
+      }));
+      showNotification('Không thể thích bình luận', 'error');
     }
   };
 
@@ -572,15 +668,27 @@ export default function EventPostsNew() {
                     <span>{event.likeCount || 0} lượt thích</span>
                   </div>
                 </div>
-              </div>
+            </div>
 
-              {/* Role-based Action Buttons */}
-              <div className="flex flex-col gap-2">
-                {/* USER: Register/Unregister */}
-                {user?.role === 'USER' && (
-                  <button
-                    onClick={handleRegisterEvent}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            {/* Role-based Action Buttons */}
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleLikeEvent}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  event.isLiked
+                    ? 'bg-red-50 text-red-500'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Heart size={18} fill={event.isLiked ? 'currentColor' : 'none'} />
+                <span>{event.likeCount || 0} lượt thích</span>
+              </button>
+
+              {/* USER: Register/Unregister */}
+              {user?.role === 'USER' && (
+                <button
+                  onClick={handleRegisterEvent}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                       isRegistered
                         ? 'bg-red-50 text-red-600 hover:bg-red-100'
                         : 'bg-blue-500 text-white hover:bg-blue-600'
@@ -676,20 +784,21 @@ export default function EventPostsNew() {
                     setPostForm({ content: post.content });
                     setShowEditPostModal(true);
                   }}
+                  onLikeComment={(commentId) => handleLikeComment(post.id, commentId)}
                   commentInput={commentInputs[post.id] || ''}
-              onCommentChange={(value) => setCommentInputs(prev => ({ ...prev, [post.id]: value }))}
-              onCommentSubmit={() => handleCreateComment(post.id)}
-              onDeleteComment={handleDeleteComment}
-              commentPageInfo={commentPageInfo[post.id]}
-              onCommentPageChange={(page) => handleCommentPageChange(post.id, page)}
-              renderPagination={renderPagination}
-              formatDate={formatDate}
-            />
-          ))}
+                  onCommentChange={(value) => setCommentInputs(prev => ({ ...prev, [post.id]: value }))}
+                  onCommentSubmit={() => handleCreateComment(post.id)}
+                  onDeleteComment={handleDeleteComment}
+                  commentPageInfo={commentPageInfo[post.id]}
+                  onCommentPageChange={(page) => handleCommentPageChange(post.id, page)}
+                  renderPagination={renderPagination}
+                  formatDate={formatDate}
+                />
+              ))}
 
-          {renderPagination(postPageInfo, handlePostPageChange)}
-        </div>
-      )}
+              {renderPagination(postPageInfo, handlePostPageChange)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -785,6 +894,7 @@ function PostCard({
   onLike, 
   onDelete, 
   onEdit,
+  onLikeComment,
   commentInput,
   onCommentChange,
   onCommentSubmit,
@@ -877,6 +987,15 @@ function PostCard({
                     {comment.creatorName}
                   </span>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onLikeComment(comment.id)}
+                      className={`flex items-center gap-1 text-xs font-semibold ${
+                        comment.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
+                      }`}
+                    >
+                      <Heart size={14} fill={comment.isLiked ? 'currentColor' : 'none'} />
+                      <span>{comment.likeCount || 0}</span>
+                    </button>
                     <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
                     {(comment.creatorId === currentUserId || isAdmin) && (
                       <button

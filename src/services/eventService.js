@@ -6,28 +6,85 @@
 import graphqlClient from '../api/graphqlClient';
 import axiosClient from '../api/axiosClient';
 
-const parseModeration = (res) => ({
-  success: res?.result === 'SUCCESS' || !res?.result,
-  message: res?.message || '',
-  data: res,
-  toastType: res?.result === 'SUCCESS' || !res?.result ? 'success' : 'error',
-});
+const parseModeration = (res) => {
+  const success = res?.result === 'SUCCESS' || !res?.result;
+  const reason = res?.reasonCode;
+  const msg = res?.message || '';
+  const combined = reason ? `[${reason}] ${msg}` : msg;
+  return {
+    success,
+    message: combined,
+    error: success ? undefined : combined,
+    reasonCode: reason,
+    data: res,
+    toastType: success ? 'success' : 'error',
+  };
+};
 
 // ===================== READ (GraphQL) ===================== //
 
-export const getAllEvents = async (page = 0, size = 10) => {
+export const searchEvents = async (filter = {}) => {
+  try {
+    const safeFilter = {
+      keyword: null,
+      categories: [],
+      startDateFrom: null,
+      startDateTo: null,
+      location: null,
+      eventState: null,
+      ...filter
+    };
+
+    const query = `
+      query SearchEvents($filter: EventFilterInput) {
+        searchEvents(filter: $filter) {
+          eventId
+          eventName
+          eventDescription
+          eventLocation
+          eventState
+          isJoined
+          createdAt
+          updatedAt
+          likeCount
+          memberCount
+          postCount
+          categories
+          createBy {
+            userId
+            username
+            fullName
+            avatarId
+          }
+        }
+      }
+    `;
+
+    const data = await graphqlClient.query(query, { filter: safeFilter });
+    return { success: true, data: data.searchEvents };
+  } catch (error) {
+    console.error('Search events error:', error);
+    return { success: false, error: error.message || 'Không thể tìm kiếm sự kiện' };
+  }
+};
+
+export const getAllEvents = async (page = 0, size = 10, filter = null) => {
   try {
     const query = `
-      query FindEvents($page: Int, $size: Int) {
-        findEvents(page: $page, size: $size) {
+      query FindEvents($page: Int, $size: Int, $filter: JSON) {
+        findEvents(page: $page, size: $size, filter: $filter) {
           content {
             eventId
             eventName
             eventDescription
             eventLocation
+            eventState
             createdAt
             updatedAt
             likeCount
+            memberCount
+            postCount
+            categories
             createBy {
               userId
               username
@@ -47,10 +104,54 @@ export const getAllEvents = async (page = 0, size = 10) => {
       }
     `;
 
-    const data = await graphqlClient.query(query, { page, size });
+    const data = await graphqlClient.query(query, { page, size, filter });
     return { success: true, data: data.findEvents.content, pageInfo: data.findEvents.pageInfo };
   } catch (error) {
     console.error('Get all events error:', error);
+    return { success: false, error: error.message || 'Không thể tải danh sách sự kiện' };
+  }
+};
+
+// Lấy sự kiện của event_manager (tạm thời dùng findEvents chung)
+export const getManagerEvents = async (page = 0, size = 10) => {
+  try {
+    const query = `
+      query FindEventsByEventManager($page: Int, $size: Int) {
+        findEventsByEventManager(page: $page, size: $size) {
+          content {
+            eventId
+            eventName
+            eventDescription
+            eventLocation
+            eventState
+            createdAt
+            updatedAt
+            likeCount
+            memberCount
+            postCount
+            categories
+            createBy {
+              userId
+              username
+              fullName
+              avatarId
+            }
+          }
+          pageInfo {
+            page
+            size
+            totalElements
+            totalPages
+            hasNext
+            hasPrevious
+          }
+        }
+      }
+    `;
+    const data = await graphqlClient.query(query, { page, size });
+    return { success: true, data: data.findEventsByEventManager.content, pageInfo: data.findEventsByEventManager.pageInfo };
+  } catch (error) {
+    console.error('Get manager events error:', error);
     return { success: false, error: error.message || 'Không thể tải danh sách sự kiện' };
   }
 };
@@ -64,9 +165,13 @@ export const getEventById = async (eventId, postPage = 0, postSize = 5, commentS
           eventName
           eventDescription
           eventLocation
+          eventState
           createdAt
           updatedAt
           likeCount
+          memberCount
+          postCount
+          categories
           createBy {
             userId
             username
@@ -132,24 +237,24 @@ export const getEventById = async (eventId, postPage = 0, postSize = 5, commentS
 };
 
 // Lịch sử tham gia (RoleInEvent) của user hiện tại
-export const getParticipationHistory = async (page = 0, size = 20) => {
+export const getParticipationHistory = async (page = 0, size = 10) => {
   try {
     const query = `
       query UserHistory($page: Int, $size: Int) {
         userHistory(page: $page, size: $size) {
           content {
-            id
             participationStatus
             eventRole
-            createdAt
-            updatedAt
+            userProfile {
+              userId
+              username
+              fullName
+            }
             event {
               eventId
               eventName
               eventDescription
               eventLocation
-              createdAt
-              updatedAt
             }
           }
           pageInfo {
@@ -242,8 +347,13 @@ export const approveEvent = async (eventId) => {
 };
 
 export const rejectEvent = async (eventId) => {
-  // Backend không có API reject event, placeholder để tránh gọi sai
-  return { success: false, error: 'Chức năng từ chối sự kiện chưa được hỗ trợ bởi backend' };
+  try {
+    const data = await axiosClient.post(`/events/${eventId}/reject`);
+    return parseModeration(data);
+  } catch (error) {
+    console.error('Reject event error:', error);
+    return { success: false, error: error.message || 'Không thể từ chối sự kiện' };
+  }
 };
 
 // Placeholder cho màn manager (chưa có API backend)
@@ -278,19 +388,19 @@ export const listMemberInEvent = async (eventId, page = 0, size = 20) => {
       query ListMemberInEvent($eventId: ID!, $page: Int, $size: Int) {
         listMemberInEvent(eventId: $eventId, page: $page, size: $size) {
           content {
-            id
             participationStatus
             eventRole
             userProfile {
               userId
               username
               fullName
-              email
               avatarId
             }
             event {
               eventId
               eventName
+              eventDescription
+              eventLocation
             }
           }
           pageInfo {
@@ -309,6 +419,60 @@ export const listMemberInEvent = async (eventId, page = 0, size = 20) => {
   } catch (error) {
     console.error('List members error:', error);
     return { success: false, error: error.message || 'Không thể tải danh sách tình nguyện viên' };
+  }
+};
+
+// Đổi trạng thái tham gia (APPROVED/COMPLETED/...)
+export const changeParticipationStatus = async (eventId, userId, participationStatus) => {
+  try {
+    const data = await axiosClient.put(`/events/${eventId}/participants/${userId}/status`, null, {
+      params: { participationStatus }
+    });
+    return parseModeration(data);
+  } catch (error) {
+    console.error('Change participation status error:', error);
+    return { success: false, error: error.message || 'Không thể cập nhật trạng thái' };
+  }
+};
+
+// Danh sách đăng ký đang chờ duyệt của sự kiện (GraphQL)
+export const getEventRegistrationByEventId = async (eventId, page = 0, size = 10) => {
+  try {
+    const query = `
+      query GetEventRegistrationByEventId($eventId: ID!, $page: Int, $size: Int) {
+        getEventRegistrationByEventId(eventId: $eventId, page: $page, size: $size) {
+          content {
+            registrationId
+            status
+            userProfile {
+            userId
+            username
+            fullName
+            avatarId
+          }
+            event {
+              eventId
+              eventName
+              eventLocation
+              eventDescription
+            }
+          }
+          pageInfo {
+            page
+            size
+            totalElements
+            totalPages
+            hasNext
+            hasPrevious
+          }
+        }
+      }
+    `;
+    const data = await graphqlClient.query(query, { eventId, page, size });
+    return { success: true, data: data.getEventRegistrationByEventId };
+  } catch (error) {
+    console.error('Get registrations error:', error);
+    return { success: false, error: error.message || 'Không thể tải danh sách đăng ký' };
   }
 };
 
